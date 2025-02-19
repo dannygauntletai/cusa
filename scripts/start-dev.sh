@@ -100,8 +100,9 @@ kill_port 5173  # Frontend port
 # Start Backend
 echo "Starting Backend..."
 cd backend
+source .venv/bin/activate  # Ensure venv is activated
 PYTHONPATH=$PYTHONPATH:$(pwd) python -m app.utils.test_pre_start
-uvicorn app.main:app --reload --port 8000 &
+uvicorn app.main:app --reload --port 8000 &  # No need for --venv option
 
 # Start Frontend
 echo "Starting Frontend..."

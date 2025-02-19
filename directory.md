@@ -3,7 +3,10 @@ Directory structure:
     ├── README.md
     ├── CHANGELOG.md
     ├── LICENSE
+    ├── directory.md
+    ├── postcss.config.js
     ├── pyproject.toml
+    ├── tailwind.config.js
     ├── .pre-commit-config.yaml
     ├── assets/
     ├── backend/
@@ -77,6 +80,8 @@ Directory structure:
     │   ├── index.html
     │   ├── package-lock.json
     │   ├── package.json
+    │   ├── postcss.config.js
+    │   ├── tailwind.config.js
     │   ├── tsconfig.app.json
     │   ├── tsconfig.json
     │   ├── tsconfig.node.json
@@ -84,21 +89,23 @@ Directory structure:
     │   ├── .gitignore
     │   ├── public/
     │   └── src/
-    │       ├── App.css
     │       ├── App.tsx
     │       ├── index.css
     │       ├── main.tsx
     │       ├── vite-env.d.ts
+    │       ├── assets/
     │       ├── components/
+    │       │   ├── home/
+    │       │   │   ├── HomePage.tsx
+    │       │   │   └── SearchInput.tsx
     │       │   └── layout/
     │       │       └── Layout.tsx
-    │       ├── features/
-    │       │   └── home/
-    │       │       ├── components/
-    │       │       │   └── SearchInput.tsx
-    │       │       └── pages/
-    │       │           └── HomePage.tsx
-    │       └── assets/
+    │       └── features/
+    │           └── home/
+    │               ├── components/
+    │               │   └── SearchInput.tsx
+    │               └── pages/
+    │                   └── HomePage.tsx
     ├── scripts/
     │   ├── bump.sh
     │   ├── start-dev.sh
