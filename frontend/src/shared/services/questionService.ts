@@ -1,14 +1,20 @@
-import { QuestionCreate, QuestionResponse, DomainResponse } from '@/shared/types/question'
+import { 
+  QuestionResponse, 
+  DomainResponse, 
+  DomainCreate,
+  QuestionCreate,
+  QuestionTypes
+} from '@/shared/types/question'
 
 const API_BASE = 'http://localhost:8000/api/v1'
 
-export async function getDomains(prompt: string): Promise<DomainResponse> {
+export async function getDomains(params: DomainCreate): Promise<DomainResponse> {
   const response = await fetch(`${API_BASE}/questions/domains`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ prompt })
+    body: JSON.stringify(params)
   })
 
   if (!response.ok) {
@@ -19,8 +25,7 @@ export async function getDomains(prompt: string): Promise<DomainResponse> {
 }
 
 export async function generateDiagnosticQuestions(
-  prompt: string,
-  domains?: string[]
+  params: QuestionCreate
 ): Promise<QuestionResponse> {
   const response = await fetch(`${API_BASE}/questions/true-false`, {
     method: 'POST',
@@ -28,8 +33,8 @@ export async function generateDiagnosticQuestions(
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      prompt,
-      domains
+      ...params,
+      question_type: QuestionTypes.TRUE_FALSE // Ensure it's always true/false
     })
   })
 
@@ -42,8 +47,7 @@ export async function generateDiagnosticQuestions(
 }
 
 export async function generateShortFormQuestions(
-  prompt: string,
-  domains?: string[]
+  params: QuestionCreate
 ): Promise<QuestionResponse> {
   const response = await fetch(`${API_BASE}/questions/short-form`, {
     method: 'POST',
@@ -51,8 +55,8 @@ export async function generateShortFormQuestions(
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      prompt,
-      domains
+      ...params,
+      question_type: QuestionTypes.SHORT_ANSWER // Ensure it's always short answer
     })
   })
 
@@ -64,7 +68,7 @@ export async function generateShortFormQuestions(
   return validateQuestionResponse(data)
 }
 
-function validateQuestionResponse(data: any): QuestionResponse {
+function validateQuestionResponse(data: QuestionResponse): QuestionResponse {
   if (!data.questions || !Array.isArray(data.questions)) {
     throw new Error('Invalid response format: missing questions array')
   }

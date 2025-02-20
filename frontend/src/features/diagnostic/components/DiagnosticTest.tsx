@@ -22,13 +22,10 @@ interface DiagnosticTestProps {
 export function DiagnosticTest({ questions, onComplete }: DiagnosticTestProps) {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [answers, setAnswers] = useState<TestResult[]>([])
-  const [isLoading, setIsLoading] = useState(false)
   
   const currentQuestion = questions[currentIndex]
 
   const handleAnswerSubmit = (answer: string) => {
-    if (isLoading) return
-
     const result: TestResult = {
       questionId: currentIndex,
       question: currentQuestion.text,

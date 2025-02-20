@@ -2,7 +2,7 @@ import os
 from typing import List, Dict
 import logging
 from educhain import Educhain
-from app.models.question import Question, QuestionCreate, QuestionResponse, Domain, QuestionType
+from app.models.question import Question, QuestionCreate, QuestionResponse, Domain, QuestionType, DomainCreate
 from app.services.openai_service import generate_completion, generate_domain_topics
 import uuid
 
@@ -29,10 +29,12 @@ class QuestionService:
             domain_instructions = f"Focus on the domain: {domain}. " if domain else ""
             instructions = f"{domain_instructions}{custom_instructions or ''}"
 
-            # Map our question type to educhain's expected format
+            # Update question type mapping to include new types
             question_type_mapping = {
                 QuestionType.TRUE_FALSE.value: "True/False",
                 QuestionType.SHORT_ANSWER.value: "Short Answer",
+                QuestionType.MULTIPLE_CHOICE.value: "Multiple Choice",
+                QuestionType.FILL_IN_BLANK.value: "Fill in the Blank"
             }
 
             if question_type not in question_type_mapping:
@@ -64,10 +66,27 @@ class QuestionService:
                     else q.get('explanation') if isinstance(q, dict) 
                     else None
                 )
+                options = (
+                    q.options if hasattr(q, 'options')
+                    else q.get('options') if isinstance(q, dict)
+                    else None
+                )
 
-                # Ensure answer is boolean for True/False questions
+                # Type-specific processing
                 if question_type == QuestionType.TRUE_FALSE.value:
                     answer = answer if isinstance(answer, bool) else str(answer).lower() == "true"
+                    options = ["True", "False"]
+                elif question_type == QuestionType.MULTIPLE_CHOICE.value:
+                    if not options or len(options) < 2:
+                        logger.warning(f"Invalid options for multiple choice: {options}")
+                        continue
+                elif question_type == QuestionType.FILL_IN_BLANK.value:
+                    # Ensure the question contains a blank marker
+                    if "___" not in question:
+                        question = question.replace("[blank]", "___")
+                    if "___" not in question:
+                        logger.warning("Fill in blank question missing blank marker")
+                        continue
 
                 questions.append(Question(
                     id=str(uuid.uuid4()),
@@ -75,8 +94,9 @@ class QuestionService:
                     answer=str(answer),
                     explanation=explanation,
                     is_correct=None,
+                    domain=domain,
                     questionType=question_type,
-                    options=["True", "False"] if question_type == QuestionType.TRUE_FALSE.value else None
+                    options=options
                 ))
 
             if not questions:
@@ -156,20 +176,94 @@ class QuestionService:
             logger.error(f"Error generating short form questions: {str(e)}")
             raise
 
-    async def extract_domains(self, prompt: str) -> List[Domain]:
+    async def extract_domains(self, params: DomainCreate) -> List[Domain]:
         """Extract relevant learning domains from the given prompt using GPT"""
         try:
-            return await generate_domain_topics(prompt)
+            return await generate_domain_topics(params.prompt)
         except Exception as e:
             logger.error(f"Error extracting domains: {str(e)}")
             return [
                 Domain(
                     name="General Knowledge",
-                    description=f"Core concepts and principles of {prompt}"
+                    description=f"Core concepts and principles of {params.prompt}"
                 )
             ]
 
-    async def generate_questions(self, params: QuestionCreate) -> QuestionResponse:
-        """Generate questions based on the provided parameters"""
-        # TODO: Implement question generation logic here
-        return QuestionResponse(questions=[], total=0)
+    async def generate_multiple_choice_questions(
+        self, 
+        params: QuestionCreate
+    ) -> QuestionResponse:
+        """Generate multiple choice questions"""
+        try:
+            all_questions = []
+            
+            if params.domains:
+                questions_per_domain = params.num_questions // len(params.domains)
+                remainder = params.num_questions % len(params.domains)
+                
+                for i, domain in enumerate(params.domains):
+                    domain_questions = questions_per_domain + (remainder if i == 0 else 0)
+                    
+                    questions = await self._generate_questions_with_educhain(
+                        topic=params.prompt,
+                        num_questions=domain_questions,
+                        question_type=QuestionType.MULTIPLE_CHOICE.value,
+                        domain=domain,
+                        custom_instructions=(
+                            "Generate multiple choice questions with 4 options. "
+                            "Ensure options are distinct and plausible. "
+                            "One option must be clearly correct."
+                        )
+                    )
+                    all_questions.extend(questions)
+            else:
+                all_questions = await self._generate_questions_with_educhain(
+                    topic=params.prompt,
+                    num_questions=params.num_questions,
+                    question_type=QuestionType.MULTIPLE_CHOICE.value
+                )
+
+            return QuestionResponse(questions=all_questions, total=len(all_questions))
+
+        except Exception as e:
+            logger.error(f"Error generating multiple choice questions: {str(e)}")
+            raise
+
+    async def generate_fill_in_blank_questions(
+        self, 
+        params: QuestionCreate
+    ) -> QuestionResponse:
+        """Generate fill in the blank questions"""
+        try:
+            all_questions = []
+            
+            if params.domains:
+                questions_per_domain = params.num_questions // len(params.domains)
+                remainder = params.num_questions % len(params.domains)
+                
+                for i, domain in enumerate(params.domains):
+                    domain_questions = questions_per_domain + (remainder if i == 0 else 0)
+                    
+                    questions = await self._generate_questions_with_educhain(
+                        topic=params.prompt,
+                        num_questions=domain_questions,
+                        question_type=QuestionType.FILL_IN_BLANK.value,
+                        domain=domain,
+                        custom_instructions=(
+                            "Generate fill in the blank questions using ___ as blank marker. "
+                            "Ensure blanks test key concepts and have unambiguous answers."
+                        )
+                    )
+                    all_questions.extend(questions)
+            else:
+                all_questions = await self._generate_questions_with_educhain(
+                    topic=params.prompt,
+                    num_questions=params.num_questions,
+                    question_type=QuestionType.FILL_IN_BLANK.value
+                )
+
+            return QuestionResponse(questions=all_questions, total=len(all_questions))
+
+        except Exception as e:
+            logger.error(f"Error generating fill in blank questions: {str(e)}")
+            raise

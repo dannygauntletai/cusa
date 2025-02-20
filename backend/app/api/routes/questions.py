@@ -4,7 +4,8 @@ from app.models.question import (
     QuestionCreate, 
     QuestionResponse, 
     QuestionType, 
-    DomainResponse
+    DomainResponse,
+    DomainCreate
 )
 from app.services.question_service import QuestionService
 import logging
@@ -20,10 +21,10 @@ router = APIRouter(
 )
 
 @router.post("/domains", response_model=DomainResponse)
-async def get_domains(prompt: str = Body(..., embed=True)) -> DomainResponse:
+async def get_domains(params: DomainCreate) -> DomainResponse:
     """Extract relevant domains from the given prompt"""
     try:
-        domains = await question_service.extract_domains(prompt)
+        domains = await question_service.extract_domains(params)
         return DomainResponse(
             domains=domains,
             single_domain=len(domains) <= 1

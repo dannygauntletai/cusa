@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { GradientText } from '@/components/ui/GradientText'
-import { Question, Domain } from '@/shared/types/question'
+import { Question, Domain, QuestionTypes } from '@/shared/types/question'
 import { generateDiagnosticQuestions, generateShortFormQuestions, getDomains } from '@/shared/services/questionService'
 import { DiagnosticTest } from '@/features/diagnostic/components/DiagnosticTest'
 import { DomainSelector } from '@/features/diagnostic/components/DomainSelector'
@@ -42,6 +42,10 @@ export function DiagnosticPage() {
   const [questions, setQuestions] = useState<Question[]>([])
   const [error, setError] = useState('')
   const [domains, setDomains] = useState<Domain[]>([])
+  const [level1Score, setLevel1Score] = useState<number>(0)
+  const [level2Score, setLevel2Score] = useState<number>(0)
+
+  // TODO: These scores will be used in the final results display
 
   // Fetch domains when component mounts
   useEffect(() => {
@@ -58,7 +62,7 @@ export function DiagnosticPage() {
 
   const fetchDomains = async () => {
     try {
-      const response = await getDomains(prompt)
+      const response = await getDomains({ prompt })
       setDomains(response.domains)
       setStage('domain-select')
     } catch (err) {
@@ -71,7 +75,12 @@ export function DiagnosticPage() {
     try {
       selectedDomainsRef.current = selectedDomains
       setStage('generating-l1')
-      const response = await generateDiagnosticQuestions(prompt, selectedDomains)
+      const response = await generateDiagnosticQuestions({
+        prompt,
+        domains: selectedDomains,
+        num_questions: 10,
+        question_type: QuestionTypes.TRUE_FALSE
+      })
       setQuestions(response.questions)
       setStage('ready-l1')
     } catch (err) {
@@ -81,9 +90,15 @@ export function DiagnosticPage() {
   }
 
   const handleLevel1Complete = async (score: number) => {
+    setLevel1Score(score)
     try {
       setStage('generating-l2')
-      const response = await generateShortFormQuestions(prompt, selectedDomainsRef.current)
+      const response = await generateShortFormQuestions({
+        prompt,
+        domains: selectedDomainsRef.current,
+        num_questions: 10,
+        question_type: QuestionTypes.SHORT_ANSWER
+      })
       setQuestions(response.questions)
       setStage('ready-l2')
     } catch (err) {
@@ -93,6 +108,7 @@ export function DiagnosticPage() {
   }
 
   const handleLevel2Complete = (score: number) => {
+    setLevel2Score(score)
     setStage('complete')
   }
 

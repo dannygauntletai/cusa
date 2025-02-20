@@ -38,4 +38,8 @@ export interface Domain {
 export interface DomainResponse {
   domains: Domain[]
   single_domain: boolean
+}
+
+export interface DomainCreate {
+  prompt: string
 } 

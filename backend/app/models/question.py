@@ -46,4 +46,8 @@ class Question(BaseModel):
 
 class QuestionResponse(BaseModel):
     questions: List[Question]
-    total: int 
+    total: int
+
+class DomainCreate(BaseModel):
+    """Schema for domain creation request"""
+    prompt: str 
