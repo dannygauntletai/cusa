@@ -44,6 +44,14 @@ if settings.all_cors_origins:
         allow_headers=["*"],
     )
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],  # Frontend URL
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 # Include the routers
 app.include_router(api_router, prefix=settings.API_V1_STR)
