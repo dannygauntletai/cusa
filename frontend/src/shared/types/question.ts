@@ -9,6 +9,8 @@ export interface Question {
   question: string
   answer: boolean
   explanation?: string
+  user_answer?: boolean
+  is_correct?: boolean
 }
 
 export interface QuestionResponse {
@@ -18,6 +20,6 @@ export interface QuestionResponse {
 
 export interface QuestionCreate {
   prompt: string
-  num_questions?: number
-  question_type?: QuestionType
+  num_questions: number
+  question_type: QuestionType
 } 

@@ -4,7 +4,7 @@ interface LayoutProps {
 
 function Layout({ children }: LayoutProps) {
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-900 text-gray-900 dark:text-white antialiased">
+    <div className="min-h-screen bg-gradient-to-b from-blue-100 via-blue-50 to-white text-gray-900 antialiased">
       {children}
     </div>
   )
