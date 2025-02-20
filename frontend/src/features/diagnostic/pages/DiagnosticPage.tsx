@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { GradientText } from '@/components/ui/GradientText'
 import { Question, Domain, QuestionTypes } from '@/shared/types/question'
-import { generateDiagnosticQuestions, generateShortFormQuestions, getDomains } from '@/shared/services/questionService'
+import { generateDiagnosticQuestions, generateShortFormQuestions, getDomains, generateMultipleChoiceQuestions, generateFillInBlankQuestions } from '@/shared/services/questionService'
 import { DiagnosticTest } from '@/features/diagnostic/components/DiagnosticTest'
 import { DomainSelector } from '@/features/diagnostic/components/DomainSelector'
 import { LoadingSlides } from '@/features/diagnostic/components/LoadingSlides'
@@ -16,6 +16,12 @@ type DiagnosticStage =
   | 'generating-l2'
   | 'ready-l2'
   | 'active-l2'
+  | 'generating-l3'
+  | 'ready-l3'
+  | 'active-l3'
+  | 'generating-l4'
+  | 'ready-l4'
+  | 'active-l4'
   | 'complete'
 
 const INTRO_SLIDES = [
@@ -27,8 +33,22 @@ const INTRO_SLIDES = [
 const LEVEL2_SLIDES = [
   "You've finished Level 1",
   "Now let's move on to Level 2",
-  "These questions will test your understanding and application",
+  "These questions will test your knowledge with multiple choice questions",
   "Please allow us a few moments to generate them"
+]
+
+const LEVEL3_SLIDES = [
+  "Great progress! Moving on to Level 3",
+  "This level will test your knowledge with fill-in-the-blank questions",
+  "Take your time to think about each answer",
+  "Please allow us a few moments to generate the questions"
+]
+
+const LEVEL4_SLIDES = [
+  "Final level! Level 4",
+  "This level will test your understanding with short answer questions",
+  "Explain your answers clearly and concisely",
+  "Please allow us a few moments to generate the questions"
 ]
 
 export function DiagnosticPage() {
@@ -44,6 +64,8 @@ export function DiagnosticPage() {
   const [domains, setDomains] = useState<Domain[]>([])
   const [level1Score, setLevel1Score] = useState<number>(0)
   const [level2Score, setLevel2Score] = useState<number>(0)
+  const [level3Score, setLevel3Score] = useState<number>(0)
+  const [level4Score, setLevel4Score] = useState<number>(0)
 
   // TODO: These scores will be used in the final results display
 
@@ -93,11 +115,11 @@ export function DiagnosticPage() {
     setLevel1Score(score)
     try {
       setStage('generating-l2')
-      const response = await generateShortFormQuestions({
+      const response = await generateMultipleChoiceQuestions({
         prompt,
         domains: selectedDomainsRef.current,
         num_questions: 10,
-        question_type: QuestionTypes.SHORT_ANSWER
+        question_type: QuestionTypes.MULTIPLE_CHOICE
       })
       setQuestions(response.questions)
       setStage('ready-l2')
@@ -107,13 +129,49 @@ export function DiagnosticPage() {
     }
   }
 
-  const handleLevel2Complete = (score: number) => {
+  const handleLevel2Complete = async (score: number) => {
     setLevel2Score(score)
+    try {
+      setStage('generating-l3')
+      const response = await generateFillInBlankQuestions({
+        prompt,
+        domains: selectedDomainsRef.current,
+        num_questions: 10,
+        question_type: QuestionTypes.FILL_IN_BLANK
+      })
+      setQuestions(response.questions)
+      setStage('ready-l3')
+    } catch (err) {
+      console.error('Error generating Level 3 questions:', err)
+      setError('Failed to generate Level 3 questions. Please try again.')
+    }
+  }
+
+  const handleLevel3Complete = async (score: number) => {
+    setLevel3Score(score)
+    try {
+      setStage('generating-l4')
+      const response = await generateShortFormQuestions({
+        prompt,
+        domains: selectedDomainsRef.current,
+        num_questions: 10,
+        question_type: QuestionTypes.SHORT_ANSWER
+      })
+      setQuestions(response.questions)
+      setStage('ready-l4')
+    } catch (err) {
+      console.error('Error generating Level 4 questions:', err)
+      setError('Failed to generate Level 4 questions. Please try again.')
+    }
+  }
+
+  const handleLevel4Complete = (score: number) => {
+    setLevel4Score(score)
     setStage('complete')
   }
 
-  const handleStart = (level: 1 | 2) => {
-    setStage(level === 1 ? 'active-l1' : 'active-l2')
+  const handleStart = (level: 1 | 2 | 3 | 4) => {
+    setStage(`active-l${level}` as DiagnosticStage)
   }
 
   if (error) {
@@ -153,13 +211,26 @@ export function DiagnosticPage() {
     return <LoadingSlides slides={LEVEL2_SLIDES} />
   }
 
+  if (stage === 'generating-l3') {
+    return <LoadingSlides slides={LEVEL3_SLIDES} />
+  }
+
+  if (stage === 'generating-l4') {
+    return <LoadingSlides slides={LEVEL4_SLIDES} />
+  }
+
   // Show active test for either level
-  if (stage === 'active-l1' || stage === 'active-l2') {
+  if (stage.startsWith('active-l')) {
     return (
       <div className="container mx-auto px-4 py-8">
         <DiagnosticTest 
           questions={questions}
-          onComplete={stage === 'active-l1' ? handleLevel1Complete : handleLevel2Complete}
+          onComplete={
+            stage === 'active-l1' ? handleLevel1Complete :
+            stage === 'active-l2' ? handleLevel2Complete :
+            stage === 'active-l3' ? handleLevel3Complete :
+            handleLevel4Complete
+          }
         />
       </div>
     )
@@ -174,7 +245,7 @@ export function DiagnosticPage() {
             <GradientText light>Level 1 - Factual Recall</GradientText>
           </h2>
           <p className="text-gray-600">
-            Answer {questions.length} questions to test your knowledge
+            Answer {questions.length} true/false questions to test your knowledge
           </p>
           <button
             onClick={() => handleStart(1)}
@@ -193,13 +264,57 @@ export function DiagnosticPage() {
       <div className="min-h-screen flex items-center justify-center p-8">
         <div className="text-center space-y-6">
           <h2 className="text-2xl font-bold">
-            <GradientText light>Level 2 - Short Form Questions</GradientText>
+            <GradientText light>Level 2 - Multiple Choice Questions</GradientText>
+          </h2>
+          <p className="text-gray-600">
+            Take your time to answer {questions.length} multiple choice questions
+          </p>
+          <button
+            onClick={() => handleStart(2)}
+            className="px-8 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+          >
+            Start
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // Show start screen for Level 3
+  if (stage === 'ready-l3') {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-8">
+        <div className="text-center space-y-6">
+          <h2 className="text-2xl font-bold">
+            <GradientText light>Level 3 - Fill in the Blank Questions</GradientText>
+          </h2>
+          <p className="text-gray-600">
+            Take your time to answer {questions.length} fill-in-the-blank questions
+          </p>
+          <button
+            onClick={() => handleStart(3)}
+            className="px-8 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+          >
+            Start
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // Show start screen for Level 4
+  if (stage === 'ready-l4') {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-8">
+        <div className="text-center space-y-6">
+          <h2 className="text-2xl font-bold">
+            <GradientText light>Level 4 - Short Answer Questions</GradientText>
           </h2>
           <p className="text-gray-600">
             Take your time to answer {questions.length} short-form questions
           </p>
           <button
-            onClick={() => handleStart(2)}
+            onClick={() => handleStart(4)}
             className="px-8 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
           >
             Start

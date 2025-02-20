@@ -3,6 +3,8 @@ import { Question } from '@/shared/types/question'
 import { TrueFalseQuestion } from './TrueFalseQuestion'
 import { ShortFormQuestion } from './ShortFormQuestion'
 import { QuestionTypes } from '@/shared/types/question'
+import { MultipleChoiceQuestion } from './MultipleChoiceQuestion'
+import { FillInBlankQuestion } from './FillInBlankQuestion'
 
 interface TestResult {
   questionId: number
@@ -67,29 +69,44 @@ export function DiagnosticTest({ questions, onComplete }: DiagnosticTestProps) {
   }
 
   const renderQuestion = () => {
-    if (!currentQuestion) {
-      return null
-    }
+    if (!currentQuestion) return null
 
-    if (currentQuestion.questionType === QuestionTypes.TRUE_FALSE) {
-      return (
-        <TrueFalseQuestion 
-          question={currentQuestion}
-          onAnswerChange={handleAnswerSubmit}
-        />
-      )
+    switch (currentQuestion.questionType) {
+      case QuestionTypes.TRUE_FALSE:
+        return (
+          <TrueFalseQuestion 
+            question={currentQuestion}
+            onAnswerChange={handleAnswerSubmit}
+          />
+        )
+      
+      case QuestionTypes.MULTIPLE_CHOICE:
+        return (
+          <MultipleChoiceQuestion 
+            question={currentQuestion}
+            onAnswerChange={handleAnswerSubmit}
+          />
+        )
+      
+      case QuestionTypes.FILL_IN_BLANK:
+        return (
+          <FillInBlankQuestion 
+            question={currentQuestion}
+            onAnswerChange={handleAnswerSubmit}
+          />
+        )
+      
+      case QuestionTypes.SHORT_ANSWER:
+        return (
+          <ShortFormQuestion 
+            question={currentQuestion}
+            onAnswerChange={handleAnswerSubmit}
+          />
+        )
+      
+      default:
+        return null
     }
-
-    if (currentQuestion.questionType === QuestionTypes.SHORT_ANSWER) {
-      return (
-        <ShortFormQuestion 
-          question={currentQuestion}
-          onAnswerChange={handleAnswerSubmit}
-        />
-      )
-    }
-
-    return null
   }
 
   if (!questions.length) {

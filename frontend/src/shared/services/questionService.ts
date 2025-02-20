@@ -2,79 +2,39 @@ import {
   QuestionResponse, 
   DomainResponse, 
   DomainCreate,
-  QuestionCreate,
-  QuestionTypes
+  QuestionCreate
 } from '@/shared/types/question'
-
-const API_BASE = 'http://localhost:8000/api/v1'
+import { apiClient } from './apiClient'
 
 export async function getDomains(params: DomainCreate): Promise<DomainResponse> {
-  const response = await fetch(`${API_BASE}/questions/domains`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(params)
-  })
-
-  if (!response.ok) {
-    throw new Error('Failed to analyze topic')
-  }
-
-  return response.json()
+  const response = await apiClient.post<DomainResponse>('/questions/domains', params)
+  return response.data
 }
 
 export async function generateDiagnosticQuestions(
   params: QuestionCreate
 ): Promise<QuestionResponse> {
-  const response = await fetch(`${API_BASE}/questions/true-false`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      ...params,
-      question_type: QuestionTypes.TRUE_FALSE // Ensure it's always true/false
-    })
-  })
-
-  if (!response.ok) {
-    throw new Error('Failed to generate questions')
-  }
-
-  const data = await response.json()
-  return validateQuestionResponse(data)
+  const response = await apiClient.post<QuestionResponse>('/questions/true-false', params)
+  return response.data
 }
 
 export async function generateShortFormQuestions(
   params: QuestionCreate
 ): Promise<QuestionResponse> {
-  const response = await fetch(`${API_BASE}/questions/short-form`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      ...params,
-      question_type: QuestionTypes.SHORT_ANSWER // Ensure it's always short answer
-    })
-  })
-
-  if (!response.ok) {
-    throw new Error('Failed to generate questions')
-  }
-
-  const data = await response.json()
-  return validateQuestionResponse(data)
+  const response = await apiClient.post<QuestionResponse>('/questions/short-form', params)
+  return response.data
 }
 
-function validateQuestionResponse(data: QuestionResponse): QuestionResponse {
-  if (!data.questions || !Array.isArray(data.questions)) {
-    throw new Error('Invalid response format: missing questions array')
-  }
+export async function generateMultipleChoiceQuestions(
+  params: QuestionCreate
+): Promise<QuestionResponse> {
+  const response = await apiClient.post<QuestionResponse>('/questions/multiple-choice', params)
+  return response.data
+}
 
-  return {
-    questions: data.questions,
-    total: data.total || data.questions.length
-  }
-} 
+export async function generateFillInBlankQuestions(
+  params: QuestionCreate
+): Promise<QuestionResponse> {
+  const response = await apiClient.post<QuestionResponse>('/questions/fill-in-blank', params)
+  return response.data
+}
