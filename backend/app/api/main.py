@@ -1,8 +1,11 @@
-from fastapi import APIRouter
-
+from fastapi import FastAPI
 from app.api.routes import items, utils, questions
 
-api_router = APIRouter()
-api_router.include_router(items.router)
-api_router.include_router(utils.router)
-api_router.include_router(questions.router)
+app = FastAPI()
+
+# Core routes
+app.include_router(items.router)
+app.include_router(utils.router)
+
+# Question-related routes
+app.include_router(questions.router)

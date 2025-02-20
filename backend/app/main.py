@@ -8,7 +8,8 @@ from fastapi.concurrency import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
 from uvicorn.config import LOGGING_CONFIG
 
-from app.api.main import api_router
+# Import the FastAPI app instance directly
+from app.api.main import app as api_app
 from app.core.config import settings
 from app.utils import custom_generate_unique_id
 
@@ -16,7 +17,7 @@ logger = logging.getLogger("uvicorn")
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:  # noqa ARG001
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """life span events"""
     try:
         logger.info("lifespan start")
@@ -25,7 +26,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:  # noqa ARG001
         logger.info("lifespan exit")
 
 
-# init FastAPI with lifespan
+# Create the main FastAPI app
 app = FastAPI(
     lifespan=lifespan,
     title=settings.PROJECT_NAME,
@@ -33,50 +34,52 @@ app = FastAPI(
     generate_unique_id_function=custom_generate_unique_id,
 )
 
-
-# Set all CORS enabled origins
-if settings.all_cors_origins:
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=settings.all_cors_origins,
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
-
+# Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],  # Frontend URL
+    allow_origins=[
+        "http://localhost:5173",  # Vite dev server
+        "http://127.0.0.1:5173",
+        "http://localhost:3000",  # In case you use npm run dev
+        "http://127.0.0.1:3000",
+    ],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["*"],  # Allows all methods
+    allow_headers=["*"],  # Allows all headers
+    expose_headers=["*"],  # Optional: expose specific headers
 )
 
-
-# Include the routers
-app.include_router(api_router, prefix=settings.API_V1_STR)
+# Mount the API router
+app.mount(settings.API_V1_STR, api_app)
 
 
 @app.get("/", tags=["root"])
-async def read_root() -> dict[str, str]:
-    return {"Hello": "World"}
+async def root():
+    return {"message": "CUSA API"}
 
 
 # Logger
 def timestamp_log_config(uvicorn_log_config: dict[str, Any]) -> dict[str, Any]:
-    """https://github.com/fastapi/fastapi/discussions/7457#discussioncomment-5565969"""
+    """Configure timestamp format for uvicorn logging"""
     datefmt = "%d-%m-%Y %H:%M:%S"
     formatters = uvicorn_log_config["formatters"]
+    
+    for formatter in ["default", "access"]:
+        formatters[formatter]["datefmt"] = datefmt
+    
     formatters["default"]["fmt"] = "%(levelprefix)s [%(asctime)s] %(message)s"
     formatters["access"]["fmt"] = (
-        '%(levelprefix)s [%(asctime)s] %(client_addr)s - "%(request_line)s" %(status_code)s'
+        '%(levelprefix)s [%(asctime)s] %(client_addr)s - '
+        '"%(request_line)s" %(status_code)s'
     )
-    formatters["access"]["datefmt"] = datefmt
-    formatters["default"]["datefmt"] = datefmt
+    
     return uvicorn_log_config
 
 
 if __name__ == "__main__":
     uvicorn.run(
-        app, host="0.0.0.0", port=8000, log_config=timestamp_log_config(LOGGING_CONFIG)
+        app,
+        host="0.0.0.0",
+        port=8000,
+        log_config=timestamp_log_config(LOGGING_CONFIG),
     )

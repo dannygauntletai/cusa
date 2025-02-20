@@ -1,7 +1,5 @@
 import { useState, FormEvent } from 'react'
-import { QuestionList } from '@/features/questions/components/QuestionList'
-import { Question } from '@/shared/types/question'
-import { generateQuestions } from '@/shared/services/questionService'
+import { useNavigate } from 'react-router-dom'
 
 type Mode = 'catching-up' | 'staying-ahead'
 
@@ -11,27 +9,14 @@ interface SearchInputProps {
 }
 
 export function SearchInput({ query, setQuery }: SearchInputProps) {
-  const [questions, setQuestions] = useState<Question[]>([])
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState('')
+  const navigate = useNavigate()
   const [mode, setMode] = useState<Mode>('catching-up')
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     if (!query.trim()) return
 
-    setIsLoading(true)
-    setError('')
-
-    try {
-      const response = await generateQuestions(query)
-      setQuestions(response.questions)
-    } catch (error) {
-      console.error(error)
-      setError('Failed to generate questions. Please try again.')
-    } finally {
-      setIsLoading(false)
-    }
+    navigate('/diagnostic', { state: { prompt: query } })
   }
 
   return (
@@ -87,20 +72,6 @@ export function SearchInput({ query, setQuery }: SearchInputProps) {
           </button>
         </div>
       </form>
-
-      {isLoading && (
-        <div className="text-center mt-4">
-          <div className="animate-spin h-8 w-8 border-4 border-blue-200 border-t-blue-500 rounded-full mx-auto" />
-        </div>
-      )}
-
-      {error && (
-        <div className="mt-4 p-4 bg-red-50 text-red-600 rounded-lg border border-red-100">
-          {error}
-        </div>
-      )}
-
-      <QuestionList questions={questions} />
     </div>
   )
 }

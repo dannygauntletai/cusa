@@ -63,7 +63,7 @@ function HomePage() {
             <div className="text-center space-y-6">
               <h2 className="text-4xl sm:text-5xl tracking-tight">
                 <GradientText light>
-                  Master new skills anywhere.
+                  Master new skills anywhere
                 </GradientText>
               </h2>
               <SearchInput query={query} setQuery={setQuery} />

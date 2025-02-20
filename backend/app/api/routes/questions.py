@@ -1,20 +1,82 @@
-from fastapi import APIRouter, HTTPException
-from app.models.question import QuestionCreate, QuestionResponse
-from app.services.question_service import generate_questions
+from fastapi import APIRouter, HTTPException, Body
+from typing import List
+from app.models.question import (
+    QuestionCreate, 
+    QuestionResponse, 
+    QuestionType, 
+    DomainResponse
+)
+from app.services.question_service import QuestionService
+import logging
 
-router = APIRouter(prefix="/questions", tags=["questions"])
 
-@router.post("/generate", response_model=QuestionResponse)
-async def create_questions(question_create: QuestionCreate) -> QuestionResponse:
-    """Generate questions based on the provided prompt"""
+logger = logging.getLogger(__name__)
+question_service = QuestionService()
+
+# Add prefix to ensure all routes start with /questions
+router = APIRouter(
+    prefix="/questions",
+    tags=["questions"]
+)
+
+@router.post("/domains", response_model=DomainResponse)
+async def get_domains(prompt: str = Body(..., embed=True)) -> DomainResponse:
+    """Extract relevant domains from the given prompt"""
     try:
-        questions = await generate_questions(question_create)
-        return QuestionResponse(
-            questions=questions,
-            total=len(questions)
+        domains = await question_service.extract_domains(prompt)
+        return DomainResponse(
+            domains=domains,
+            single_domain=len(domains) <= 1
         )
     except Exception as e:
+        logger.error(f"Error extracting domains: {str(e)}")
         raise HTTPException(
             status_code=500,
-            detail=str(e)
-        ) 
+            detail="Failed to extract domains"
+        )
+
+
+@router.post("/true-false", response_model=QuestionResponse)
+async def generate_true_false(
+    prompt: str = Body(...),
+    domains: List[str] = Body(default=None),
+) -> QuestionResponse:
+    """Generate true/false questions"""
+    logger.info(f"Received true/false request with prompt: {prompt}")
+    try:
+        params = QuestionCreate(
+            prompt=prompt,
+            num_questions=30,
+            question_type=QuestionType.TRUE_FALSE,
+            domains=domains
+        )
+        logger.info("Generating true/false questions...")
+        result = await question_service.generate_diagnostic_questions(params)
+        logger.info(f"Generated {len(result.questions)} questions")
+        return result
+    except Exception as e:
+        logger.error(f"Error generating true/false questions: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/short-form", response_model=QuestionResponse)
+async def generate_short_form(
+    prompt: str = Body(...),
+    domains: List[str] = Body(default=None),
+) -> QuestionResponse:
+    """Generate short-form questions"""
+    logger.info(f"Received short-form request with prompt: {prompt}, domains: {domains}")
+    try:
+        params = QuestionCreate(
+            prompt=prompt,
+            num_questions=10,
+            question_type=QuestionType.SHORT_ANSWER,
+            domains=domains
+        )
+        logger.info("Generating short form questions...")
+        result = await question_service.generate_short_form_questions(params)
+        logger.info(f"Generated {len(result.questions)} questions")
+        return result
+    except Exception as e:
+        logger.error(f"Error generating short-form questions: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e)) 
