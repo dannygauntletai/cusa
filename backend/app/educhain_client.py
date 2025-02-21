@@ -1,7 +1,7 @@
 from typing import List, Optional
 from os import getenv
 from dotenv import load_dotenv
-from backend.app.models import QuestionType, DifficultyLevel, QuizQuestion
+from app.models import QuestionType, DifficultyLevel, QuizQuestion
 from educhain.core.educhain import Educhain
 from educhain.core.config import LLMConfig
 from educhain.models.qna_models import (
@@ -42,13 +42,21 @@ async def generate_questions(
             learning_objective=learning_objective
         )
 
-        # Convert to our QuizQuestion model
+        # Convert to our QuizQuestion model based on type
         quiz_questions = []
         for i, q in enumerate(response.questions, start=start_id):
+            # Handle different question types appropriately
+            if isinstance(response, MCQList):
+                options = q.options
+            elif isinstance(response, TrueFalseQuestionList):
+                options = ['True', 'False']
+            else:
+                options = None
+
             quiz_question = QuizQuestion(
                 id=i,
                 question=q.question,
-                options=getattr(q, 'options', None),
+                options=options,
                 correctAnswer=str(q.answer),  # Convert bool to str for True/False
                 type=question_type
             )
@@ -56,4 +64,4 @@ async def generate_questions(
             
         return quiz_questions
     except Exception as e:
-        raise Exception(f"Educhain generation failed: {str(e)}") 
+        raise Exception(f"Failed to generate questions: {str(e)}") 

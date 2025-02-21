@@ -1,7 +1,7 @@
 from typing import List
 import asyncio
-from .models import QuizConfig, QuizQuestion
-from .educhain_client import generate_questions
+from app.models import QuizConfig, QuizQuestion
+from app.educhain_client import generate_questions
 
 
 async def generate_quiz(config: QuizConfig) -> List[QuizQuestion]:

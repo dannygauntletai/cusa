@@ -12,6 +12,7 @@ export interface QuizConfig {
   difficultyLevel: DifficultyLevel
   learningObjective?: string
   totalQuestions: number
+  questions?: QuizQuestion[]
 }
 
 export interface QuizQuestion {

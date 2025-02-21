@@ -89,7 +89,7 @@ This document describes a step-by-step implementation plan for the Cusa Offline 
     *   Action: In `/frontend/src/components`, create `QuestionType.tsx` where users can select quiz question type(s) (multiple choice, true/false, mix) and optionally specify difficulty.
     *   File: `/frontend/src/components/QuestionType.tsx`
     *   Reference: PRD Section 3 (Choosing the Question Type) and Q&A on difficulty specifications
-    *   **Validation:** Verify that each selection option is clickable and records the user’s choice.
+    *   **Validation:** Verify that each selection option is clickable and records the user's choice.
 
 5.  **Create Quiz Display and Result Summary Page**
 
@@ -143,26 +143,62 @@ This document describes a step-by-step implementation plan for the Cusa Offline 
 
 ## **Phase 4: Integration**
 
-1.  **Connect Frontend to Backend API Using Electron IPC**
+1. **Setup API Service for Frontend**
 
-    *   Action: In `/electron/main.js`, add an IPC handler that forwards requests from the frontend to the Python backend API at `http://localhost:5000/generate`.
-    *   File: `/electron/main.js`
-    *   Reference: PRD Section 3 & 4 (User Flow and Error Handling) and Tech Stack Document
-    *   **Validation:** Trigger a quiz generation from the frontend and trace the IPC flow.
+    * Action: Create a service module to handle API calls to the Python backend.
+    * File: `/frontend/src/services/api.ts`
+    * Reference: PRD Section 3 (User Flow) and Tech Stack Document
+    * Code sample:
 
-2.  **Frontend API Call Implementation**
+    ```typescript
+    const API_BASE_URL = 'http://localhost:5000';
 
-    *   Action: In `/frontend/src/services/api.ts`, create an API service module using Axios (or fetch) to make POST requests to the backend endpoint `/generate`.
-    *   File: `/frontend/src/services/api.ts`
-    *   Reference: PRD Section 3 (Generating the Quiz)
-    *   **Validation:** Write a unit test (e.g., with Jest) in `/frontend/src/tests/api.test.ts` to confirm the API call works as expected.
+    export const quizService = {
+      generateQuiz: async (request: QuizRequest): Promise<APIResponse<QuizResponse>> => {
+        try {
+          const response = await fetch(`${API_BASE_URL}/generate`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(request),
+          });
+          
+          if (!response.ok) {
+            throw new Error('Failed to generate quiz');
+          }
+          
+          const data = await response.json();
+          return {
+            data,
+            status: 'success'
+          };
+        } catch (error) {
+          console.error('API Error:', error);
+          return {
+            error: error instanceof Error ? error.message : 'Failed to generate quiz',
+            status: 'error'
+          };
+        }
+      }
+    };
+    ```
 
-3.  **Global Error Propagation Handling**
+2. **Frontend API Integration**
 
-    *   Action: In the API service, add error handling to catch backend API failures and trigger the error UI component, reverting to the home screen.
-    *   File: `/frontend/src/services/api.ts`
-    *   Reference: PRD Section 4 (Error Handling)
-    *   **Validation:** Simulate a backend error (e.g., by stopping the Python server) and verify that the frontend displays an error message.
+    * Action: Update components to use the new API service instead of IPC.
+    * Files to update:
+        * `/frontend/src/components/QuizTypeSelection.tsx`
+        * `/frontend/src/types/api.ts` (new file for API types)
+    * Reference: PRD Section 3 (Generating the Quiz)
+    * **Validation:** Write unit tests to confirm API integration works as expected.
+
+3. **Error Handling Implementation**
+
+    * Action: Implement comprehensive error handling for API failures.
+    * File: `/frontend/src/services/api.ts`
+    * Reference: PRD Section 4 (Error Handling)
+    * **Validation:** Test error scenarios by simulating API failures.
 
 ## **Phase 5: Deployment**
 

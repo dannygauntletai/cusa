@@ -21,7 +21,8 @@ Follow instructions at https://ollama.ai/download
 
 4. Run the server:
 ```bash
-uvicorn app.main:app --reload
+# From the backend directory
+python -m uvicorn app.main:app --reload --port 8000
 ```
 
 The API will be available at http://localhost:8000

@@ -1,14 +1,16 @@
 import { useState } from 'react'
+import ErrorBoundary from './components/ErrorBoundary'
+import { ErrorProvider } from './context/ErrorContext'
+import { ConnectivityProvider } from './context/ConnectivityContext'
 import HomeScreen from './components/HomeScreen'
 import QuizTypeSelection from './components/QuizTypeSelection'
 import QuizDisplay from './components/QuizDisplay'
-import type { QuizConfig, QuizResult } from './types/quiz'
+import type { QuizConfig } from './types/quiz'
 
 function App() {
   const [topic, setTopic] = useState<string>('')
   const [showQuizConfig, setShowQuizConfig] = useState(false)
   const [showQuiz, setShowQuiz] = useState(false)
-  const [quizResult, setQuizResult] = useState<QuizResult | null>(null)
 
   const handleTopicSubmit = (newTopic: string) => {
     setTopic(newTopic)
@@ -20,30 +22,33 @@ function App() {
     setShowQuiz(true)
   }
 
-  const handleQuizComplete = (result: QuizResult) => {
-    setQuizResult(result)
+  const handleQuizComplete = () => {
+    setShowQuiz(false)
+    setShowQuizConfig(false)
   }
 
-  if (showQuiz) {
-    return (
-      <QuizDisplay 
-        onComplete={handleQuizComplete}
-        onBack={() => setShowQuiz(false)}
-      />
-    )
-  }
-
-  if (showQuizConfig) {
-    return (
-      <QuizTypeSelection 
-        topic={topic}
-        onSubmit={handleQuizConfigSubmit}
-        onBack={() => setShowQuizConfig(false)}
-      />
-    )
-  }
-
-  return <HomeScreen onSubmit={handleTopicSubmit} />
+  return (
+    <ErrorBoundary>
+      <ErrorProvider>
+        <ConnectivityProvider>
+          {showQuiz ? (
+            <QuizDisplay 
+              onComplete={handleQuizComplete}
+              onBack={() => setShowQuiz(false)}
+            />
+          ) : showQuizConfig ? (
+            <QuizTypeSelection 
+              topic={topic}
+              onSubmit={handleQuizConfigSubmit}
+              onBack={() => setShowQuizConfig(false)}
+            />
+          ) : (
+            <HomeScreen onSubmit={handleTopicSubmit} />
+          )}
+        </ConnectivityProvider>
+      </ErrorProvider>
+    </ErrorBoundary>
+  )
 }
 
 export default App

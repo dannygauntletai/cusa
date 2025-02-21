@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { QuizConfig, QuestionType, DifficultyLevel, QuestionTypeConfig } from '../types/quiz'
+import { quizService } from '../services/api'
 
 interface QuizTypeSelectionProps {
   topic: string
@@ -8,6 +9,10 @@ interface QuizTypeSelectionProps {
 }
 
 const QuizTypeSelection = ({ topic, onSubmit, onBack }: QuizTypeSelectionProps) => {
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [retryCount, setRetryCount] = useState(0)
+  const MAX_RETRIES = 3
   const [questionTypes, setQuestionTypes] = useState<QuestionTypeConfig[]>([
     { type: 'Multiple Choice', count: 3 }
   ])
@@ -67,24 +72,48 @@ const QuizTypeSelection = ({ topic, onSubmit, onBack }: QuizTypeSelectionProps) 
     return null
   }
 
-  const handleSubmit = () => {
-    const error = validateConfig()
-    if (error) {
-      // TODO: Show error message to user
-      console.error(error)
+  const handleSubmit = async () => {
+    const validationError = validateConfig()
+    if (validationError) {
+      setError(validationError)
       return
     }
 
-    const totalQuestions = questionTypes.reduce((sum, qt) => sum + qt.count, 0)
-    const config: QuizConfig = {
-      topic,
-      questionTypes,
-      difficultyLevel,
-      learningObjective: learningObjective || undefined,
-      totalQuestions
-    }
+    setIsLoading(true)
+    setError(null)
 
-    onSubmit(config)
+    try {
+      const response = await quizService.generateQuiz({
+        topic,
+        question_type: questionTypes[0].type,
+        num_questions: questionTypes[0].count,
+        difficulty: difficultyLevel
+      })
+      
+      if (response.status === 'error') {
+        throw new Error(response.error || 'Failed to generate quiz')
+      }
+      
+      const quizConfig: QuizConfig = {
+        topic,
+        questionTypes,
+        difficultyLevel,
+        totalQuestions: questionTypes.reduce((sum, qt) => sum + qt.count, 0),
+        questions: response.data.questions
+      }
+      
+      onSubmit(quizConfig)
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to generate quiz'
+      setError(errorMessage)
+      
+      if (retryCount < MAX_RETRIES) {
+        setRetryCount(prev => prev + 1)
+        setTimeout(() => handleSubmit(), 1000 * (retryCount + 1))
+      }
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -173,19 +202,31 @@ const QuizTypeSelection = ({ topic, onSubmit, onBack }: QuizTypeSelectionProps) 
             />
           </div>
 
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative" role="alert">
+              <span className="block sm:inline">{error}</span>
+              {retryCount > 0 && (
+                <span className="block sm:inline ml-2">
+                  Retry attempt {retryCount} of {MAX_RETRIES}...
+                </span>
+              )}
+            </div>
+          )}
+
           <div className="flex space-x-4">
             <button
               onClick={onBack}
               className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+              disabled={isLoading}
             >
               Back
             </button>
             <button
               onClick={handleSubmit}
-              disabled={questionTypes.length === 0}
+              disabled={isLoading || questionTypes.length === 0}
               className="flex-1 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
             >
-              Generate Quiz
+              {isLoading ? 'Generating Quiz...' : 'Generate Quiz'}
             </button>
           </div>
         </div>
