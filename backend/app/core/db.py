@@ -1,41 +1,66 @@
+"""Database connection and session management."""
+import json
+from pathlib import Path
 from collections.abc import Generator
-
-from sqlmodel import Session, create_engine, select
-from supabase import create_client
+from sqlalchemy import create_engine, event
+from sqlmodel import Session, SQLModel
 
 from app.core.config import settings
-from app.models import User
 
 # make sure all SQLModel models are imported (app.models) before initializing DB
 # otherwise, SQLModel might fail to initialize relationships properly
 # for more details: https://github.com/fastapi/full-stack-fastapi-template/issues/28
 
-engine = create_engine(str(settings.SQLALCHEMY_DATABASE_URI))
+# Initialize SQLite database engine with thread safety for FastAPI
+engine = create_engine(
+    settings.DATABASE_URL,
+    connect_args={"check_same_thread": False}
+)
+
+# Add JSON handling for SQLite
+@event.listens_for(engine, 'connect')
+def _enable_json(dbapi_connection, connection_record):
+    """Enable JSON support for SQLite connection."""
+    # Create JSON functions for SQLite
+    if 'sqlite' in engine.dialect.name:
+        dbapi_connection.create_function('json', 1, json.dumps)
+        dbapi_connection.create_function('json_extract', 2, json.loads)
+
+
+VERSION_FILE = Path("db_version.json")
 
 
 def get_db() -> Generator[Session, None]:
+    """Get database session."""
     with Session(engine) as session:
         yield session
 
 
-def init_db(session: Session) -> None:
-    # Tables should be created with Alembic migrations
-    # But if you don't want to use migrations, create
-    # the tables un-commenting the next lines
-    # from sqlmodel import SQLModel
-    # # This works because the models are already imported and registered from app.models
-    # SQLModel.metadata.create_all(engine)
+def get_db_version() -> int:
+    """Get current database version."""
+    if not VERSION_FILE.exists():
+        return 0
+    with VERSION_FILE.open() as f:
+        return json.load(f).get("version", 0)
 
-    result = session.exec(select(User).where(User.email == settings.FIRST_SUPERUSER))
-    user = result.first()
-    if not user:
-        super_client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
-        response = super_client.auth.sign_up(
-            {
-                "email": settings.FIRST_SUPERUSER,
-                "password": settings.FIRST_SUPERUSER_PASSWORD,
-            }
-        )
-        assert response.user.email == settings.FIRST_SUPERUSER
-        assert response.user.id is not None
-        assert response.session.access_token is not None
+
+def set_db_version(version: int) -> None:
+    """Set current database version."""
+    with VERSION_FILE.open("w") as f:
+        json.dump({"version": version}, f)
+
+
+def init_db() -> None:
+    """Initialize database tables."""
+    current_version = get_db_version()
+    
+    if current_version < 1:
+        # Create initial schema
+        SQLModel.metadata.create_all(engine)
+        set_db_version(1)
+    
+    # Add more version checks and migrations here
+    # if current_version < 2:
+    #     with Session(engine) as session:
+    #         session.execute(text("ALTER TABLE item ADD COLUMN new_field TEXT"))
+    #         session.commit()

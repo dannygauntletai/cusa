@@ -1,8 +1,6 @@
 from uuid import UUID
-
 from fastapi import APIRouter
-
-from app.api.deps import CurrentUser, SessionDep
+from app.api.deps import SessionDep
 from app.crud import item
 from app.models.item import Item, ItemCreate, ItemUpdate
 
@@ -10,10 +8,8 @@ router = APIRouter(prefix="/items", tags=["items"])
 
 
 @router.post("/create-item")
-async def create_item(
-    item_in: ItemCreate, user: CurrentUser, session: SessionDep
-) -> Item:
-    return item.create(session, owner_id=UUID(user.id), obj_in=item_in)
+async def create_item(item_in: ItemCreate, session: SessionDep) -> Item:
+    return item.create(session, obj_in=item_in)
 
 
 @router.get("/get-item/{id}")

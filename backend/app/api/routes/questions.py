@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Body
+from fastapi import APIRouter, HTTPException, Body, Depends
 from typing import List
 from app.models.question import (
     QuestionCreate, 
@@ -124,4 +124,21 @@ async def generate_fill_in_blank(
         return result
     except Exception as e:
         logger.error(f"Error generating fill in blank questions: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e)) 
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/", response_model=QuestionResponse)
+async def get_questions(
+    skip: int = 0,
+    limit: int = 100,
+    domain: str = None,
+    question_type: QuestionType = None,
+    question_service: QuestionService = Depends()
+) -> QuestionResponse:
+    """Get questions from database with optional filtering."""
+    questions = await question_service.get_questions(
+        skip=skip,
+        limit=limit,
+        domain=domain,
+        question_type=question_type
+    )
+    return QuestionResponse(questions=questions, total=len(questions)) 

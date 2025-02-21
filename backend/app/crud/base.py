@@ -36,11 +36,9 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         result = session.exec(statement)
         return result.all()
 
-    def create(
-        self, session: Session, *, owner_id: uuid.UUID, obj_in: CreateSchemaType
-    ) -> ModelType:
+    def create(self, session: Session, *, obj_in: CreateSchemaType) -> ModelType:
         """Create new record"""
-        db_obj = self.model(**dict(owner_id=owner_id, **obj_in.model_dump()))
+        db_obj = self.model(**obj_in.model_dump())
         session.add(db_obj)
         session.commit()
         session.refresh(db_obj)

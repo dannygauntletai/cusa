@@ -5,6 +5,9 @@ from educhain import Educhain
 from app.models.question import Question, QuestionCreate, QuestionResponse, Domain, QuestionType, DomainCreate
 from app.services.openai_service import generate_completion, generate_domain_topics
 import uuid
+from uuid import UUID
+from sqlmodel import Session
+from app.core.db import get_db
 
 logger = logging.getLogger(__name__)
 
@@ -13,7 +16,7 @@ client = Educhain()
 
 class QuestionService:
     def __init__(self):
-        pass
+        self._db = next(get_db())
 
     async def _generate_questions_with_educhain(
         self,
@@ -88,28 +91,61 @@ class QuestionService:
                         logger.warning("Fill in blank question missing blank marker")
                         continue
 
-                questions.append(Question(
-                    id=str(uuid.uuid4()),
+                # Create Question object with the correct type
+                question = Question(
                     text=question,
                     answer=str(answer),
                     explanation=explanation,
-                    is_correct=None,
+                    question_type=question_type,  # Already a string
                     domain=domain,
-                    questionType=question_type,
                     options=options
-                ))
+                )
+                questions.append(question)
 
             if not questions:
                 raise ValueError("No valid questions generated")
 
+            # Save questions to database
+            await self.save_questions(questions)
             return questions
 
         except Exception as e:
             logger.error(f"Error in educhain question generation: {str(e)}")
             raise
 
+    async def save_questions(self, questions: List[Question]) -> None:
+        """Save generated questions to database."""
+        try:
+            for question in questions:
+                # Only convert if it's an enum
+                if isinstance(question.question_type, QuestionType):
+                    question.question_type = question.question_type.value
+                self._db.add(question)
+            self._db.commit()
+        except Exception as e:
+            self._db.rollback()
+            logger.error(f"Error saving questions: {str(e)}")
+            raise
+
+    async def get_questions(
+        self, 
+        skip: int = 0, 
+        limit: int = 100,
+        domain: str = None,
+        question_type: QuestionType = None
+    ) -> List[Question]:
+        """Retrieve questions from database with optional filtering."""
+        query = self._db.query(Question)
+        
+        if domain:
+            query = query.filter(Question.domain == domain)
+        if question_type:
+            query = query.filter(Question.question_type == question_type.value)
+            
+        return query.offset(skip).limit(limit).all()
+
     async def generate_diagnostic_questions(self, params: QuestionCreate) -> QuestionResponse:
-        """Generate questions for diagnostic test (always True/False)"""
+        """Generate and store diagnostic questions."""
         try:
             all_questions = []
             
@@ -137,6 +173,9 @@ class QuestionService:
                     question_type=QuestionType.TRUE_FALSE.value
                 )
 
+            # Store questions in database
+            await self.save_questions(all_questions)
+            
             return QuestionResponse(questions=all_questions, total=len(all_questions))
 
         except Exception as e:

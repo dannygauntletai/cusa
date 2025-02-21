@@ -1,4 +1,4 @@
+from .question import Question, QuestionType
 from .item import Item
-from .user import User
 
-__all__ = ["User", "Item"]
+__all__ = ["Question", "QuestionType", "Item"]
