@@ -5,45 +5,55 @@ import { ConnectivityProvider } from './context/ConnectivityContext'
 import HomeScreen from './components/HomeScreen'
 import QuizTypeSelection from './components/QuizTypeSelection'
 import QuizDisplay from './components/QuizDisplay'
-import type { QuizConfig } from './types/quiz'
+import type { QuizConfig, QuizResult } from './types/quiz'
 
 function App() {
-  const [topic, setTopic] = useState<string>('')
-  const [showQuizConfig, setShowQuizConfig] = useState(false)
-  const [showQuiz, setShowQuiz] = useState(false)
+  const [step, setStep] = useState<'home' | 'config' | 'quiz'>('home')
+  const [topic, setTopic] = useState('')
+  const [quizConfig, setQuizConfig] = useState<QuizConfig | null>(null)
 
-  const handleTopicSubmit = (newTopic: string) => {
-    setTopic(newTopic)
-    setShowQuizConfig(true)
+  const handleTopicSubmit = (selectedTopic: string) => {
+    setTopic(selectedTopic)
+    setStep('config')
   }
 
-  const handleQuizConfigSubmit = (config: QuizConfig) => {
-    console.log('Generating quiz with config:', config)
-    setShowQuiz(true)
+  const handleConfigSubmit = (config: QuizConfig) => {
+    setQuizConfig(config)
+    setStep('quiz')
   }
 
-  const handleQuizComplete = () => {
-    setShowQuiz(false)
-    setShowQuizConfig(false)
+  const handleQuizComplete = (result: QuizResult) => {
+    console.log('Quiz completed:', result)
+  }
+
+  const handleBack = () => {
+    if (step === 'config') {
+      setStep('home')
+    } else if (step === 'quiz') {
+      setStep('config')
+    }
   }
 
   return (
     <ErrorBoundary>
       <ErrorProvider>
         <ConnectivityProvider>
-          {showQuiz ? (
-            <QuizDisplay 
-              onComplete={handleQuizComplete}
-              onBack={() => setShowQuiz(false)}
-            />
-          ) : showQuizConfig ? (
-            <QuizTypeSelection 
-              topic={topic}
-              onSubmit={handleQuizConfigSubmit}
-              onBack={() => setShowQuizConfig(false)}
-            />
-          ) : (
+          {step === 'home' && (
             <HomeScreen onSubmit={handleTopicSubmit} />
+          )}
+          {step === 'config' && (
+            <QuizTypeSelection
+              topic={topic}
+              onSubmit={handleConfigSubmit}
+              onBack={handleBack}
+            />
+          )}
+          {step === 'quiz' && quizConfig && (
+            <QuizDisplay
+              questions={quizConfig.questions || []}
+              onComplete={handleQuizComplete}
+              onBack={handleBack}
+            />
           )}
         </ConnectivityProvider>
       </ErrorProvider>

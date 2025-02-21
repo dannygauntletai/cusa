@@ -40,25 +40,11 @@ async def health_check():
 
 
 @app.post("/api/quiz", response_model=QuizResponse)
-async def create_quiz(config: QuizConfig):
-    """Generate quiz questions based on configuration."""
+async def create_quiz(request: QuizRequest):
+    """Generate quiz questions."""
     try:
-        logger.info(f"Generating quiz for topic: {config.topic}")
-        questions = await generate_quiz(config)
-        logger.info(f"Successfully generated {len(questions)} questions")
-        return QuizResponse(questions=questions)
-    except Exception as e:
-        logger.error(f"Failed to generate quiz: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.post("/api/quiz/simple", response_model=QuizResponse)
-async def create_simple_quiz(request: QuizRequest):
-    """Generate quiz questions with simplified configuration."""
-    try:
-        logger.info(f"Generating simple quiz for topic: {request.topic}")
+        logger.info(f"Generating quiz for topic: {request.topic}")
         
-        # Convert simple request to full config
         config = QuizConfig(
             topic=request.topic,
             questionTypes=[
@@ -75,7 +61,7 @@ async def create_simple_quiz(request: QuizRequest):
         logger.info(f"Successfully generated {len(questions)} questions")
         return QuizResponse(questions=questions)
     except Exception as e:
-        logger.error(f"Failed to generate simple quiz: {str(e)}")
+        logger.error(f"Failed to generate quiz: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

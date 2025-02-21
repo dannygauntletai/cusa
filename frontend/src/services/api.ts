@@ -12,7 +12,7 @@ class APIError extends Error {
 export const quizService = {
   generateQuiz: async (request: QuizRequest): Promise<APIResponse<QuizResponse>> => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/quiz/simple`, {
+      const response = await fetch(`${API_BASE_URL}/api/quiz`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
