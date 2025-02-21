@@ -1,7 +1,7 @@
 {
   "name": "cusa-electron",
   "version": "1.0.0",
-  "description": "CUSA Quiz App - Electron Main Process",
+  "description": "CUSA Platform App - Electron Main Process",
   "main": "main.js",
   "scripts": {
     "start": "electron .",

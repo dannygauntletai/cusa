@@ -29,41 +29,38 @@ const QuizDisplay = ({ questions = [], onComplete, onBack }: QuizDisplayProps) =
     }))
   }
 
-  const calculateScore = (questions: QuizQuestion[], answers: Record<string, string>): number => {
+  const handleSubmit = () => {
+    setShowResults(true)
+    
+    // Calculate results
     const correctAnswers = questions.reduce((count, q) => {
       const userAnswer = answers[q.id]?.toLowerCase().trim() || ''
       const correctAnswer = q.correctAnswer.toLowerCase().trim()
 
       if (q.type === 'Short Answer') {
         // For short answers, check if key terms are present
-        const keyTerms = correctAnswer.split(/[.,\s]+/)
+        const keyTerms = correctAnswer.split(/[.,\s]+/).filter(term => term.length > 3)
         const matchedTerms = keyTerms.filter(term => 
-          term.length > 3 && userAnswer.includes(term)
+          userAnswer.includes(term.toLowerCase())
         )
         return count + (matchedTerms.length / keyTerms.length >= 0.7 ? 1 : 0)
       } else {
-        // For other types, exact match
+        // For other types, exact match but case-insensitive
         return count + (userAnswer === correctAnswer ? 1 : 0)
       }
     }, 0)
 
-    return (correctAnswers / questions.length) * 100
-  }
-
-  const handleSubmit = () => {
-    const score = calculateScore(questions, answers)
     const result: QuizResult = {
       totalQuestions: questions.length,
-      correctAnswers: Math.round(score * questions.length / 100),
-      incorrectAnswers: questions.length - Math.round(score * questions.length / 100),
-      score,
+      correctAnswers,
+      incorrectAnswers: questions.length - correctAnswers,
+      score: (correctAnswers / questions.length) * 100,
       questions: questions.map(q => ({
         ...q,
         userAnswer: answers[q.id]
       }))
     }
-    
-    setShowResults(true)
+
     onComplete(result)
   }
 
@@ -209,26 +206,8 @@ const QuizDisplay = ({ questions = [], onComplete, onBack }: QuizDisplayProps) =
           ))}
         </div>
 
-        <div className="flex justify-between pt-6">
-          <button
-            onClick={handleBack}  // Use new handler instead of onBack directly
-            className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
-          >
-            {showResults ? 'Start New Quiz' : 'Back'}  {/* Update button text */}
-          </button>
-          {!showResults && (
-            <button
-              onClick={handleSubmit}
-              disabled={Object.keys(answers).length !== questions.length}
-              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
-            >
-              Submit Quiz
-            </button>
-          )}
-        </div>
-
         {showResults && (
-          <div className="mt-8 bg-white p-6 rounded-lg shadow-sm">
+          <div className="bg-white p-6 rounded-lg shadow-sm">
             <h2 className="text-2xl font-bold text-gray-900">Quiz Summary</h2>
             <div className="mt-4 grid grid-cols-2 gap-4">
               <div className="bg-gray-50 p-4 rounded-lg">
@@ -246,6 +225,33 @@ const QuizDisplay = ({ questions = [], onComplete, onBack }: QuizDisplayProps) =
             </div>
           </div>
         )}
+
+        <div className="flex justify-end pt-6">
+          {!showResults ? (
+            <>
+              <button
+                onClick={handleBack}
+                className="mr-4 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+              >
+                Back
+              </button>
+              <button
+                onClick={handleSubmit}
+                disabled={Object.keys(answers).length !== questions.length}
+                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
+              >
+                Submit Quiz
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={handleBack}
+              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+            >
+              Start New Quiz
+            </button>
+          )}
+        </div>
       </div>
     </div>
   )

@@ -18,13 +18,13 @@ function createWindow() {
   const { width, height } = store.get('windowBounds') as { width: number; height: number }
   
   const win = new BrowserWindow({
-    width,
-    height,
-    minWidth: 800,
-    minHeight: 600,
+    width: 1024,
+    height: 768,
+    minWidth: 1024,
+    minHeight: 768,
     webPreferences: {
-      nodeIntegration: false,
-      contextIsolation: true,
+      nodeIntegration: true,
+      contextIsolation: false,
       preload: __dirname + '/preload.js'
     }
   })
