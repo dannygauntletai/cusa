@@ -1,8 +1,18 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Modal from './Modal'
 
 interface HomeScreenProps {
   onSubmit: (topic: string) => void
+}
+
+interface SpeechRecognitionEvent {
+  results: {
+    [key: number]: {
+      [key: number]: {
+        transcript: string
+      }
+    }
+  }
 }
 
 const HomeScreen = ({ onSubmit }: HomeScreenProps) => {
@@ -10,6 +20,8 @@ const HomeScreen = ({ onSubmit }: HomeScreenProps) => {
   const [useWebSearch, setUseWebSearch] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [isOnline, setIsOnline] = useState(window.navigator.onLine)
+  const [isListening, setIsListening] = useState(false)
+  const recognitionRef = useRef<SpeechRecognition | null>(null)
 
   // Monitor online/offline status
   useEffect(() => {
@@ -28,10 +40,61 @@ const HomeScreen = ({ onSubmit }: HomeScreenProps) => {
     }
   }, [])
 
+  useEffect(() => {
+    // Initialize speech recognition
+    if (window.SpeechRecognition || (window as any).webkitSpeechRecognition) {
+      const SpeechRecognition = window.SpeechRecognition || (window as any).webkitSpeechRecognition
+      recognitionRef.current = new SpeechRecognition()
+      
+      recognitionRef.current.continuous = true
+      recognitionRef.current.interimResults = true
+      recognitionRef.current.lang = 'en-US'
+
+      recognitionRef.current.onresult = (event: SpeechRecognitionEvent) => {
+        const results = Array.from(event.results)
+        const lastResult = results[results.length - 1]
+        if (lastResult[0]) {
+          const transcript = lastResult[0].transcript
+          setTopic(transcript)
+        }
+      }
+
+      recognitionRef.current.onerror = () => {
+        setIsListening(false)
+      }
+
+      recognitionRef.current.onend = () => {
+        // Restart if we're still supposed to be listening
+        if (isListening && recognitionRef.current) {
+          recognitionRef.current.start()
+        }
+      }
+    }
+
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.abort()
+      }
+    }
+  }, [isListening])
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (topic.trim()) {
       onSubmit(topic.trim())
+    }
+  }
+
+  const toggleListening = () => {
+    if (!recognitionRef.current) return
+
+    if (isListening) {
+      recognitionRef.current.stop()
+      setIsListening(false)
+    } else {
+      setTopic('') // Clear existing topic
+      recognitionRef.current.start()
+      setIsListening(true)
     }
   }
 
@@ -88,7 +151,7 @@ const HomeScreen = ({ onSubmit }: HomeScreenProps) => {
                   type="button"
                   onClick={() => isOnline && setUseWebSearch(!useWebSearch)}
                   disabled={!isOnline}
-                  className={`px-3 py-2 mt-1 rounded-xl transition-colors flex items-center gap-2 ${
+                  className={`px-3 py-2 mt-1 ml-1 rounded-xl transition-colors flex items-center gap-2 ${
                     !isOnline 
                       ? 'bg-[#2d2d2d] text-gray-500 cursor-not-allowed'
                       : useWebSearch 
@@ -112,21 +175,35 @@ const HomeScreen = ({ onSubmit }: HomeScreenProps) => {
                   )}
                   <span>Search</span>
                 </button>
-                <button
-                  type="submit"
-                  disabled={!topic.trim()}
-                  className="px-3 py-2 mt-1 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:bg-[#2d2d2d] disabled:text-gray-500 disabled:cursor-not-allowed transition-colors"
-                >
-                  {topic.trim() ? (
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      toggleListening()
+                    }}
+                    className={`px-3 py-2 mt-1 rounded-xl transition-colors ${
+                      isListening 
+                        ? 'bg-blue-600 text-white hover:bg-blue-700' 
+                        : 'bg-[#2d2d2d] text-gray-300 hover:bg-[#353535]'
+                    }`}
+                  >
+                    <div className={`relative ${isListening ? 'animate-pulse' : ''}`}>
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={!topic.trim()}
+                    className="px-3 py-2 mt-1 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:bg-[#2d2d2d] disabled:text-gray-500 disabled:cursor-not-allowed transition-colors"
+                  >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                       <path fillRule="evenodd" d="M3.293 9.707a1 1 0 010-1.414l6-6a1 1 0 011.414 0l6 6a1 1 0 01-1.414 1.414L11 5.414V17a1 1 0 11-2 0V5.414L4.707 9.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
                     </svg>
-                  ) : (
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clipRule="evenodd" />
-                    </svg>
-                  )}
-                </button>
+                  </button>
+                </div>
               </div>
             </div>
           </form>
