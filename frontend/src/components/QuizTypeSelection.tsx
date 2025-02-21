@@ -83,23 +83,38 @@ const QuizTypeSelection = ({ topic, onSubmit, onBack }: QuizTypeSelectionProps) 
     setError(null)
 
     try {
-      const response = await quizService.generateQuiz({
+      // Create a request for each question type
+      const requests = questionTypes.map(qt => quizService.generateQuiz({
         topic,
-        question_type: questionTypes[0].type,
-        num_questions: questionTypes[0].count,
+        question_type: qt.type,
+        num_questions: qt.count,
         difficulty: difficultyLevel
-      })
-      
-      if (response.status === 'error') {
-        throw new Error(response.error || 'Failed to generate quiz')
+      }))
+
+      // Wait for all requests to complete
+      const responses = await Promise.all(requests)
+
+      // Check for any errors
+      const errorResponse = responses.find(r => r.status === 'error')
+      if (errorResponse) {
+        throw new Error(errorResponse.error || 'Failed to generate quiz')
       }
-      
+
+      // Combine all questions with unique IDs based on type and index
+      const allQuestions = responses.flatMap((response, typeIndex) => 
+        response.data.questions.map((question, questionIndex) => ({
+          ...question,
+          id: `${typeIndex + 1}-${questionIndex + 1}`,  // Create composite ID
+          type: questionTypes[typeIndex].type  // Ensure type is set correctly
+        }))
+      )
+
       const quizConfig: QuizConfig = {
         topic,
         questionTypes,
         difficultyLevel,
         totalQuestions: questionTypes.reduce((sum, qt) => sum + qt.count, 0),
-        questions: response.data.questions
+        questions: allQuestions
       }
       
       onSubmit(quizConfig)

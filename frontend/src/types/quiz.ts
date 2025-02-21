@@ -16,7 +16,7 @@ export interface QuizConfig {
 }
 
 export interface QuizQuestion {
-  id: number
+  id: string
   question: string
   options?: string[]  // For multiple choice
   correctAnswer: string

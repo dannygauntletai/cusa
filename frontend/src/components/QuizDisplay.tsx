@@ -8,7 +8,7 @@ interface QuizDisplayProps {
 }
 
 const QuizDisplay = ({ questions = [], onComplete, onBack }: QuizDisplayProps) => {
-  const [answers, setAnswers] = useState<Record<number, string>>({})
+  const [answers, setAnswers] = useState<Record<string, string>>({})
   const [showResults, setShowResults] = useState(false)
 
   // Add loading state if no questions
@@ -22,25 +22,41 @@ const QuizDisplay = ({ questions = [], onComplete, onBack }: QuizDisplayProps) =
     )
   }
 
-  const handleAnswer = (questionId: number, answer: string) => {
+  const handleAnswer = (questionId: string, answer: string) => {
     setAnswers(prev => ({
       ...prev,
       [questionId]: answer
     }))
   }
 
+  const calculateScore = (questions: QuizQuestion[], answers: Record<string, string>): number => {
+    const correctAnswers = questions.reduce((count, q) => {
+      const userAnswer = answers[q.id]?.toLowerCase().trim() || ''
+      const correctAnswer = q.correctAnswer.toLowerCase().trim()
+
+      if (q.type === 'Short Answer') {
+        // For short answers, check if key terms are present
+        const keyTerms = correctAnswer.split(/[.,\s]+/)
+        const matchedTerms = keyTerms.filter(term => 
+          term.length > 3 && userAnswer.includes(term)
+        )
+        return count + (matchedTerms.length / keyTerms.length >= 0.7 ? 1 : 0)
+      } else {
+        // For other types, exact match
+        return count + (userAnswer === correctAnswer ? 1 : 0)
+      }
+    }, 0)
+
+    return (correctAnswers / questions.length) * 100
+  }
+
   const handleSubmit = () => {
+    const score = calculateScore(questions, answers)
     const result: QuizResult = {
       totalQuestions: questions.length,
-      correctAnswers: questions.filter(q => 
-        answers[q.id]?.toLowerCase() === q.correctAnswer.toLowerCase()
-      ).length,
-      incorrectAnswers: questions.length - questions.filter(q => 
-        answers[q.id]?.toLowerCase() === q.correctAnswer.toLowerCase()
-      ).length,
-      score: (questions.filter(q => 
-        answers[q.id]?.toLowerCase() === q.correctAnswer.toLowerCase()
-      ).length / questions.length) * 100,
+      correctAnswers: Math.round(score * questions.length / 100),
+      incorrectAnswers: questions.length - Math.round(score * questions.length / 100),
+      score,
       questions: questions.map(q => ({
         ...q,
         userAnswer: answers[q.id]
@@ -51,13 +67,24 @@ const QuizDisplay = ({ questions = [], onComplete, onBack }: QuizDisplayProps) =
     onComplete(result)
   }
 
+  // Add a handler for the back button that considers results state
+  const handleBack = () => {
+    if (showResults) {
+      // Go back to homepage when results are shown
+      window.location.reload() // Simple way to reset the entire app state
+    } else {
+      // Normal back behavior during quiz
+      onBack()
+    }
+  }
+
   const renderQuestion = (question: QuizQuestion) => {
     switch (question.type) {
       case "Multiple Choice":
         return (
           <div className="space-y-2">
             {question.options?.map((option, idx) => (
-              <label key={idx} className="flex items-center space-x-2">
+              <label key={`${question.id}-option-${idx}`} className="flex items-center space-x-2">
                 <input
                   type="radio"
                   name={`question-${question.id}`}
@@ -77,7 +104,7 @@ const QuizDisplay = ({ questions = [], onComplete, onBack }: QuizDisplayProps) =
         return (
           <div className="space-x-4">
             {["True", "False"].map((option) => (
-              <label key={option} className="inline-flex items-center space-x-2">
+              <label key={`${question.id}-${option}`} className="inline-flex items-center space-x-2">
                 <input
                   type="radio"
                   name={`question-${question.id}`}
@@ -105,6 +132,31 @@ const QuizDisplay = ({ questions = [], onComplete, onBack }: QuizDisplayProps) =
           />
         )
 
+      case "Short Answer":
+        return (
+          <div className="space-y-2">
+            <textarea
+              value={answers[question.id] || ''}
+              onChange={(e) => handleAnswer(question.id, e.target.value)}
+              disabled={showResults}
+              placeholder="Type your answer..."
+              rows={4}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+            {showResults && (
+              <div className="mt-4">
+                <p className="text-sm font-medium text-gray-700">Model Answer:</p>
+                <p className="text-sm text-gray-600">{question.correctAnswer}</p>
+                <p className="text-sm font-medium text-gray-700 mt-2">Your Answer:</p>
+                <p className="text-sm text-gray-600">{answers[question.id]}</p>
+                <p className="text-sm text-gray-500 mt-2 italic">
+                  Note: Short answers are evaluated based on key concepts. Your answer may be correct even if it doesn't match exactly.
+                </p>
+              </div>
+            )}
+          </div>
+        )
+
       default:
         return null
     }
@@ -121,7 +173,7 @@ const QuizDisplay = ({ questions = [], onComplete, onBack }: QuizDisplayProps) =
         <div className="space-y-8">
           {questions.map((question, idx) => (
             <div 
-              key={question.id} 
+              key={`question-${question.id}`}
               className={`bg-white p-6 rounded-lg shadow-sm space-y-4 ${
                 showResults ? 
                   answers[question.id]?.toLowerCase() === question.correctAnswer.toLowerCase()
@@ -159,10 +211,10 @@ const QuizDisplay = ({ questions = [], onComplete, onBack }: QuizDisplayProps) =
 
         <div className="flex justify-between pt-6">
           <button
-            onClick={onBack}
+            onClick={handleBack}  // Use new handler instead of onBack directly
             className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
           >
-            Back
+            {showResults ? 'Start New Quiz' : 'Back'}  {/* Update button text */}
           </button>
           {!showResults && (
             <button
@@ -187,7 +239,7 @@ const QuizDisplay = ({ questions = [], onComplete, onBack }: QuizDisplayProps) =
                 <p className="text-sm text-gray-600">Score</p>
                 <p className="text-2xl font-bold text-gray-900">
                   {((Object.entries(answers).filter(([id, answer]) => 
-                    answer.toLowerCase() === questions.find(q => q.id === Number(id))?.correctAnswer.toLowerCase()
+                    answer.toLowerCase() === questions.find(q => q.id === id)?.correctAnswer.toLowerCase()
                   ).length / questions.length) * 100).toFixed(0)}%
                 </p>
               </div>
