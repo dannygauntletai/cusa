@@ -9,6 +9,9 @@ from app.services.quiz_service import store_quiz_session
 async def generate_quiz(config: QuizConfig, db: Session) -> List[QuizQuestion]:
     """Generate quiz questions using educhain and store in database."""
     try:
+        print(f"quiz_generator: config={config}")  # Log entire config
+        print(f"quiz_generator: web_search={config.use_web_search}")
+        
         # Generate questions for each type in parallel
         tasks = []
         question_id = 1
@@ -20,7 +23,8 @@ async def generate_quiz(config: QuizConfig, db: Session) -> List[QuizQuestion]:
                 num_questions=qt.count,
                 difficulty=config.difficultyLevel,
                 learning_objective=config.learningObjective,
-                start_id=question_id
+                start_id=question_id,
+                use_web_search=config.use_web_search
             )
             tasks.append(task)
             question_id += qt.count

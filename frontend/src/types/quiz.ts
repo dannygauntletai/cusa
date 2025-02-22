@@ -11,6 +11,7 @@ export interface QuizConfig {
   questionTypes: QuestionTypeConfig[]
   difficultyLevel: DifficultyLevel
   learningObjective?: string
+  useWebSearch: boolean
   totalQuestions: number
   questions?: QuizQuestion[]
 }

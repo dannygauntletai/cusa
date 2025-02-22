@@ -1,4 +1,5 @@
 import type { APIResponse, QuizRequest, QuizResponse, QuizSession } from '../types/api'
+import type { QuestionType, DifficultyLevel } from '../types/quiz'
 
 const API_BASE_URL = 'http://localhost:8000'
 
@@ -9,9 +10,18 @@ class APIError extends Error {
   }
 }
 
+interface GenerateQuizRequest {
+  topic: string
+  question_type: QuestionType
+  num_questions: number
+  difficulty: DifficultyLevel
+  use_web_search: boolean
+}
+
 export const quizService = {
-  generateQuiz: async (request: QuizRequest): Promise<APIResponse<QuizResponse>> => {
+  generateQuiz: async (request: GenerateQuizRequest): Promise<APIResponse<QuizResponse>> => {
     try {
+      console.log('API: Sending quiz generation request with web_search:', request.use_web_search)
       const response = await fetch(`${API_BASE_URL}/api/quiz`, {
         method: 'POST',
         headers: {
@@ -25,6 +35,7 @@ export const quizService = {
       }
       
       const data = await response.json()
+      console.log('API: Received response:', data)
       return {
         data,
         status: 'success'

@@ -29,9 +29,11 @@ async def generate_questions(
     num_questions: int,
     difficulty: DifficultyLevel,
     learning_objective: Optional[str],
-    start_id: int
+    start_id: int,
+    use_web_search: bool = False
 ) -> List[QuizQuestion]:
     """Generate questions using educhain with Ollama/Mistral."""
+    print(f"educhain_client: web_search={use_web_search}")
     try:
         # Generate questions using educhain
         response = client.qna_engine.generate_questions(
@@ -39,7 +41,9 @@ async def generate_questions(
             num=num_questions,
             question_type=question_type.value,
             difficulty=difficulty.value,
-            learning_objective=learning_objective
+            learning_objective=learning_objective,
+            web_search=use_web_search,
+            max_web_results=3
         )
 
         # Convert to our QuizQuestion model based on type
@@ -57,7 +61,7 @@ async def generate_questions(
                 id=i,
                 question=q.question,
                 options=options,
-                correctAnswer=str(q.answer),  # Convert bool to str for True/False
+                correctAnswer=str(q.answer),  # Convert bool to str for T/F
                 type=question_type
             )
             quiz_questions.append(quiz_question)

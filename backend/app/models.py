@@ -22,15 +22,6 @@ class QuestionTypeConfig(BaseModel):
     count: int = Field(gt=0, le=10)
 
 
-class QuizConfig(BaseModel):
-    model_config = ConfigDict(extra='forbid')
-    topic: str
-    questionTypes: List[QuestionTypeConfig]
-    difficultyLevel: DifficultyLevel
-    learningObjective: Optional[str] = None
-    totalQuestions: int = Field(gt=0, le=20)
-
-
 class QuizQuestion(BaseModel):
     model_config = ConfigDict(extra='forbid')
     id: int
@@ -40,12 +31,24 @@ class QuizQuestion(BaseModel):
     type: QuestionType
 
 
+class QuizConfig(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    topic: str
+    questionTypes: List[QuestionTypeConfig]
+    difficultyLevel: DifficultyLevel
+    learningObjective: Optional[str] = None
+    use_web_search: bool = False
+    totalQuestions: int = Field(gt=0, le=20)
+    questions: Optional[List[QuizQuestion]] = None
+
+
 class QuizRequest(BaseModel):
     """Request model for quiz generation."""
     topic: str
     question_type: QuestionType
     num_questions: int = Field(default=5, gt=0, le=10)
     difficulty: DifficultyLevel = DifficultyLevel.MEDIUM
+    use_web_search: bool = False
 
 
 class QuizResponse(BaseModel):

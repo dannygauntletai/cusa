@@ -2,17 +2,34 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 interface HomeScreenProps {
-  onSubmit: (topic: string) => void
+  onSubmit: (topic: string, useWebSearch: boolean) => void
+}
+
+interface SpeechRecognition {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onresult: (event: SpeechRecognitionEvent) => void;
+  onerror: () => void;
+  onend: () => void;
+  start: () => void;
+  stop: () => void;
+  abort: () => void;
+}
+
+interface SpeechRecognitionResult {
+  transcript: string;
+  [key: number]: any;
+}
+
+interface SpeechRecognitionResultList {
+  length: number;
+  item(index: number): SpeechRecognitionResult;
+  [index: number]: SpeechRecognitionResult;
 }
 
 interface SpeechRecognitionEvent {
-  results: {
-    [key: number]: {
-      [key: number]: {
-        transcript: string
-      }
-    }
-  }
+  results: SpeechRecognitionResultList;
 }
 
 const HomeScreen = ({ onSubmit }: HomeScreenProps) => {
@@ -46,27 +63,29 @@ const HomeScreen = ({ onSubmit }: HomeScreenProps) => {
       const SpeechRecognition = window.SpeechRecognition || (window as any).webkitSpeechRecognition
       recognitionRef.current = new SpeechRecognition()
       
-      recognitionRef.current.continuous = true
-      recognitionRef.current.interimResults = true
-      recognitionRef.current.lang = 'en-US'
+      if (recognitionRef.current) {
+        recognitionRef.current.continuous = true
+        recognitionRef.current.interimResults = true
+        recognitionRef.current.lang = 'en-US'
 
-      recognitionRef.current.onresult = (event: SpeechRecognitionEvent) => {
-        const results = Array.from(event.results)
-        const lastResult = results[results.length - 1]
-        if (lastResult[0]) {
-          const transcript = lastResult[0].transcript
-          setTopic(transcript)
+        recognitionRef.current.onresult = (event: SpeechRecognitionEvent) => {
+          const results = Array.from(event.results) as SpeechRecognitionResult[]
+          const lastResult = results[results.length - 1]
+          if (lastResult) {
+            const transcript = lastResult.transcript
+            setTopic(transcript)
+          }
         }
-      }
 
-      recognitionRef.current.onerror = () => {
-        setIsListening(false)
-      }
+        recognitionRef.current.onerror = () => {
+          setIsListening(false)
+        }
 
-      recognitionRef.current.onend = () => {
-        // Restart if we're still supposed to be listening
-        if (isListening && recognitionRef.current) {
-          recognitionRef.current.start()
+        recognitionRef.current.onend = () => {
+          // Restart if we're still supposed to be listening
+          if (isListening && recognitionRef.current) {
+            recognitionRef.current.start()
+          }
         }
       }
     }
@@ -81,7 +100,17 @@ const HomeScreen = ({ onSubmit }: HomeScreenProps) => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (topic.trim()) {
-      onSubmit(topic.trim())
+      console.log('HomeScreen: Submitting with useWebSearch:', useWebSearch)
+      onSubmit(topic.trim(), useWebSearch)
+    }
+  }
+
+  // Add logging when web search is toggled
+  const handleWebSearchToggle = () => {
+    if (isOnline) {
+      const newValue = !useWebSearch
+      console.log('HomeScreen: Toggling web search to:', newValue)
+      setUseWebSearch(newValue)
     }
   }
 
@@ -143,7 +172,7 @@ const HomeScreen = ({ onSubmit }: HomeScreenProps) => {
               <div className="absolute bottom-2 left-0 right-0 px-2 flex justify-between">
                 <button
                   type="button"
-                  onClick={() => isOnline && setUseWebSearch(!useWebSearch)}
+                  onClick={() => isOnline && handleWebSearchToggle()}
                   disabled={!isOnline}
                   className={`px-3 py-2 mt-1 ml-1 rounded-xl transition-colors flex items-center gap-2 ${
                     !isOnline 
@@ -212,7 +241,7 @@ const HomeScreen = ({ onSubmit }: HomeScreenProps) => {
                 {row.map(suggestion => (
                   <button
                     key={suggestion}
-                    onClick={() => onSubmit(suggestion)}
+                    onClick={() => onSubmit(suggestion, useWebSearch)}
                     className="px-4 py-2 bg-[#2d2d2d] text-gray-300 rounded-xl hover:bg-[#353535] transition-colors"
                   >
                     {suggestion}

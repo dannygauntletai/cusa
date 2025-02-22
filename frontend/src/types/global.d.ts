@@ -1,14 +1,14 @@
 interface Window {
-  SpeechRecognition: typeof SpeechRecognition
-  webkitSpeechRecognition: typeof SpeechRecognition
+  SpeechRecognition?: typeof SpeechRecognition
+  webkitSpeechRecognition?: typeof SpeechRecognition
 }
 
-interface SpeechRecognition {
+declare class SpeechRecognition {
   continuous: boolean
   interimResults: boolean
   lang: string
   onresult: (event: SpeechRecognitionEvent) => void
-  onerror: (event: any) => void
+  onerror: () => void
   onend: () => void
   start: () => void
   stop: () => void

@@ -54,6 +54,7 @@ async def create_quiz(request: QuizRequest, db: Session = Depends(get_db)):
     """Generate quiz questions and store in database."""
     try:
         logger.info(f"Generating quiz for topic: {request.topic}")
+        logger.info(f"Web search enabled: {request.use_web_search}")
         
         config = QuizConfig(
             topic=request.topic,
@@ -64,7 +65,8 @@ async def create_quiz(request: QuizRequest, db: Session = Depends(get_db)):
                 )
             ],
             difficultyLevel=request.difficulty,
-            totalQuestions=request.num_questions
+            totalQuestions=request.num_questions,
+            use_web_search=request.use_web_search
         )
         
         questions = await generate_quiz(config, db)

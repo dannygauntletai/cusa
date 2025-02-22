@@ -1,14 +1,15 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import type { QuizConfig, QuestionType, DifficultyLevel, QuestionTypeConfig } from '../types/quiz'
 import { quizService } from '../services/api'
 
 interface QuizTypeSelectionProps {
   topic: string
+  useWebSearch: boolean
   onSubmit: (config: QuizConfig) => void
   onBack: () => void
 }
 
-const QuizTypeSelection = ({ topic, onSubmit, onBack }: QuizTypeSelectionProps) => {
+const QuizTypeSelection = ({ topic, useWebSearch, onSubmit, onBack }: QuizTypeSelectionProps) => {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [retryCount, setRetryCount] = useState(0)
@@ -27,6 +28,10 @@ const QuizTypeSelection = ({ topic, onSubmit, onBack }: QuizTypeSelectionProps) 
   ]
 
   const difficultyLevels: DifficultyLevel[] = ['Easy', 'Medium', 'Hard']
+
+  useEffect(() => {
+    console.log('QuizTypeSelection: useWebSearch value:', useWebSearch)
+  }, [useWebSearch])
 
   const addQuestionType = () => {
     const unusedTypes = availableTypes.filter(
@@ -83,13 +88,19 @@ const QuizTypeSelection = ({ topic, onSubmit, onBack }: QuizTypeSelectionProps) 
     setError(null)
 
     try {
+      console.log('QuizTypeSelection: Creating requests with useWebSearch:', useWebSearch)
       // Create a request for each question type
-      const requests = questionTypes.map(qt => quizService.generateQuiz({
-        topic,
-        question_type: qt.type,
-        num_questions: qt.count,
-        difficulty: difficultyLevel
-      }))
+      const requests = questionTypes.map(qt => {
+        const request = {
+          topic,
+          question_type: qt.type,
+          num_questions: qt.count,
+          difficulty: difficultyLevel,
+          use_web_search: useWebSearch
+        }
+        console.log('QuizTypeSelection: Generated request:', request)
+        return quizService.generateQuiz(request)
+      })
 
       // Wait for all requests to complete
       const responses = await Promise.all(requests)
@@ -113,6 +124,7 @@ const QuizTypeSelection = ({ topic, onSubmit, onBack }: QuizTypeSelectionProps) 
         topic,
         questionTypes,
         difficultyLevel,
+        useWebSearch,
         totalQuestions: questionTypes.reduce((sum, qt) => sum + qt.count, 0),
         questions: allQuestions
       }

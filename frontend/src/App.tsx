@@ -12,6 +12,7 @@ import type { QuizConfig, QuizResult } from './types/quiz'
 function App() {
   const [topic, setTopic] = useState('')
   const [quizConfig, setQuizConfig] = useState<QuizConfig | null>(null)
+  const [useWebSearch, setUseWebSearch] = useState(false)
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -55,12 +56,20 @@ function App() {
     }
   }
 
+  const handleHomeSubmit = (topic: string, useWebSearch: boolean) => {
+    console.log('App: Received topic and useWebSearch:', topic, useWebSearch)
+    setTopic(topic)
+    setUseWebSearch(useWebSearch)
+    setStep('config')
+    navigate('/config')
+  }
+
   return (
     <ErrorBoundary>
       <ErrorProvider>
         <ConnectivityProvider>
           <Routes>
-            <Route index element={<HomeScreen onSubmit={handleTopicSubmit} />} />
+            <Route index element={<HomeScreen onSubmit={handleHomeSubmit} />} />
             <Route 
               path="/profile" 
               element={<ProfileDashboard onBack={() => navigate('/')} />}
@@ -70,6 +79,7 @@ function App() {
               element={
                 <QuizTypeSelection
                   topic={topic}
+                  useWebSearch={useWebSearch}
                   onSubmit={handleConfigSubmit}
                   onBack={handleBack}
                 />
