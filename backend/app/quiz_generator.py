@@ -1,11 +1,13 @@
 from typing import List
 import asyncio
+from sqlalchemy.orm import Session
 from app.models import QuizConfig, QuizQuestion
 from app.educhain_client import generate_questions
+from app.services.quiz_service import store_quiz_session
 
 
-async def generate_quiz(config: QuizConfig) -> List[QuizQuestion]:
-    """Generate quiz questions using educhain."""
+async def generate_quiz(config: QuizConfig, db: Session) -> List[QuizQuestion]:
+    """Generate quiz questions using educhain and store in database."""
     try:
         # Generate questions for each type in parallel
         tasks = []
@@ -28,6 +30,9 @@ async def generate_quiz(config: QuizConfig) -> List[QuizQuestion]:
         
         # Flatten the list of questions
         questions = [q for qset in question_sets for q in qset]
+        
+        # Store the quiz session and questions in the database
+        store_quiz_session(db, config, questions)
         
         return questions
     except Exception as e:

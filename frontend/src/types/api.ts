@@ -19,4 +19,22 @@ export interface QuizResponse {
     correctAnswer: string
     type: string
   }>
+}
+
+export interface QuizQuestion {
+  id: number
+  question_text: string
+  question_type: string
+  correct_answer: string
+  options: string
+  quiz_session_id: number
+}
+
+export interface QuizSession {
+  id: number
+  topic: string
+  difficulty_level: string
+  total_questions: number
+  created_at: string
+  questions?: QuizQuestion[]
 } 
