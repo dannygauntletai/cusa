@@ -1,4 +1,4 @@
-# EduChain AI Learning Platform
+# CUSA Platform
 
 An offline-first, privacy-focused learning platform that leverages local AI models and web intelligence to generate personalized educational content.
 
