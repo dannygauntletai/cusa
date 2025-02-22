@@ -197,3 +197,7 @@ youtube-transcript-api==0.6.2
 zipp==3.21.0
 sqlalchemy>=1.4.0
 aiosqlite>=0.19.0
+whisper==1.1.10
+torch==2.2.0
+soundfile==0.12.1
+pydub==0.25.1

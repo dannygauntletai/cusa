@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { quizService } from '../services/api'
 
 interface HomeScreenProps {
   onSubmit: (topic: string, useWebSearch: boolean) => void
@@ -32,6 +33,8 @@ interface SpeechRecognitionEvent {
   results: SpeechRecognitionResultList;
 }
 
+const MAX_RECORDING_DURATION = 30000; // 30 seconds in milliseconds
+
 const HomeScreen = ({ onSubmit }: HomeScreenProps) => {
   const [topic, setTopic] = useState('')
   const [useWebSearch, setUseWebSearch] = useState(false)
@@ -39,6 +42,15 @@ const HomeScreen = ({ onSubmit }: HomeScreenProps) => {
   const [isListening, setIsListening] = useState(false)
   const recognitionRef = useRef<SpeechRecognition | null>(null)
   const navigate = useNavigate()
+
+  // Add new state and refs for audio recording
+  const [isRecording, setIsRecording] = useState(false);
+  const recordingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+
+  // Add new state for processing
+  const [isProcessing, setIsProcessing] = useState(false);
 
   // Monitor online/offline status
   useEffect(() => {
@@ -114,18 +126,117 @@ const HomeScreen = ({ onSubmit }: HomeScreenProps) => {
     }
   }
 
-  const toggleListening = () => {
-    if (!recognitionRef.current) return
+  const startRecording = async () => {
+    try {
+      console.log("Starting audio recording...");
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream, {
+        mimeType: 'audio/webm;codecs=opus'  // Specify codec
+      });
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
 
-    if (isListening) {
-      recognitionRef.current.stop()
-      setIsListening(false)
-    } else {
-      setTopic('') // Clear existing topic
-      recognitionRef.current.start()
-      setIsListening(true)
+      // Request data every 1 second instead of waiting until stop
+      mediaRecorder.ondataavailable = (event) => {
+        console.log("Audio data available:", event.data.size, "bytes");
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = async () => {
+        console.log("Recording stopped, processing audio...");
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm;codecs=opus' });
+        console.log("Audio blob size:", audioBlob.size, "bytes");
+
+        try {
+          setIsProcessing(true); // Show loading state
+          console.log("Sending audio to backend...");
+          const text = await quizService.transcribeAudio(audioBlob);
+          console.log("Received transcription:", text);
+          setTopic(prev => prev ? `${prev} ${text}` : text);
+        } catch (error) {
+          console.error('Error transcribing audio:', error);
+        } finally {
+          setIsProcessing(false); // Hide loading state
+          setIsRecording(false);
+          setIsListening(false);
+        }
+      };
+
+      // Start recording and request data every 1000ms
+      mediaRecorder.start(1000);
+      setIsRecording(true);
+      setIsListening(true);
+
+      // Set timeout to stop recording after MAX_RECORDING_DURATION
+      recordingTimeoutRef.current = setTimeout(() => {
+        console.log("Recording timeout reached");
+        stopRecording();
+      }, MAX_RECORDING_DURATION);
+
+    } catch (error) {
+      console.error('Error starting recording:', error);
+      setIsRecording(false);
+      setIsListening(false);
     }
-  }
+  };
+
+  const stopRecording = () => {
+    if (recordingTimeoutRef.current) {
+      clearTimeout(recordingTimeoutRef.current);
+      recordingTimeoutRef.current = null;
+    }
+
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+      mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
+    }
+  };
+
+  const toggleListening = () => {
+    if (isRecording) {
+      stopRecording();
+    } else {
+      startRecording();
+    }
+  };
+
+  // Update the microphone button JSX
+  const microphoneButton = (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.preventDefault();
+        toggleListening();
+      }}
+      className={`px-3 py-2 mt-1 rounded-xl transition-colors flex items-center gap-2 ${
+        isRecording 
+          ? 'bg-red-600 text-white hover:bg-red-700' 
+          : 'bg-[#2d2d2d] text-gray-300 hover:bg-[#353535]'
+      }`}
+    >
+      <div className={`relative ${isRecording ? 'animate-pulse' : ''}`}>
+        {isProcessing ? (
+          // Loading spinner
+          <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+        ) : isRecording ? (
+          // Stop recording icon
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+            <rect x="6" y="6" width="8" height="8" />
+          </svg>
+        ) : (
+          // Microphone icon
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clipRule="evenodd" />
+          </svg>
+        )}
+      </div>
+    </button>
+  );
 
   // Organize suggestions into rows
   const topicSuggestions = [
@@ -199,24 +310,7 @@ const HomeScreen = ({ onSubmit }: HomeScreenProps) => {
                   <span>Search</span>
                 </button>
                 <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault()
-                      toggleListening()
-                    }}
-                    className={`px-3 py-2 mt-1 rounded-xl transition-colors ${
-                      isListening 
-                        ? 'bg-blue-600 text-white hover:bg-blue-700' 
-                        : 'bg-[#2d2d2d] text-gray-300 hover:bg-[#353535]'
-                    }`}
-                  >
-                    <div className={`relative ${isListening ? 'animate-pulse' : ''}`}>
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clipRule="evenodd" />
-                      </svg>
-                    </div>
-                  </button>
+                  {microphoneButton}
                   <button
                     type="submit"
                     disabled={!topic.trim()}

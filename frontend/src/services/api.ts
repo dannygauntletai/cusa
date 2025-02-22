@@ -113,5 +113,23 @@ export const quizService = {
         status: 'error'
       }
     }
+  },
+
+  transcribeAudio: async (audioBlob: Blob): Promise<string> => {
+    const formData = new FormData();
+    formData.append('audio', audioBlob, 'recording.webm');
+
+    const response = await fetch('http://localhost:8000/api/speech/transcribe', {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Transcription failed');
+    }
+
+    const data = await response.json();
+    return data.text;
   }
 } 

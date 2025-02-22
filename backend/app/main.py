@@ -9,6 +9,7 @@ from .logger import logger
 from .database import get_db
 from .database_init import init_database
 from .services.quiz_service import get_quiz_history, get_quiz_session
+from .routers import speech
 
 
 @asynccontextmanager
@@ -78,7 +79,11 @@ async def create_quiz(request: QuizRequest, db: Session = Depends(get_db)):
 
 
 @app.get("/api/quiz/history")
-def read_quiz_history(skip: int = 0, limit: int = 10, db: Session = Depends(get_db)):
+def read_quiz_history(
+    skip: int = 0, 
+    limit: int = 10, 
+    db: Session = Depends(get_db)
+):
     """Get quiz history with pagination."""
     return get_quiz_history(db, skip=skip, limit=limit)
 
@@ -90,6 +95,9 @@ def read_quiz(quiz_id: int, db: Session = Depends(get_db)):
     if quiz is None:
         raise HTTPException(status_code=404, detail="Quiz not found")
     return quiz
+
+
+app.include_router(speech.router)
 
 
 if __name__ == "__main__":
