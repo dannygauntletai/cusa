@@ -1,58 +1,48 @@
 import { useState, useEffect } from 'react'
 import { quizService } from '../services/api'
 import Modal from './Modal'
-import type { QuizSession, QuizQuestion } from '../types/api'
+import type { QuizSession } from '../types/api'
+
+const ITEMS_PER_PAGE = 5
 
 const QuizHistory = () => {
   const [sessions, setSessions] = useState<QuizSession[]>([])
   const [selectedSession, setSelectedSession] = useState<QuizSession | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [page, setPage] = useState(0)
-  const PAGE_SIZE = 10
+  const [currentPage, setCurrentPage] = useState(0)
 
   useEffect(() => {
     loadQuizHistory()
-  }, [page])
+  }, [])
 
   const loadQuizHistory = async () => {
     try {
       setLoading(true)
-      setError(null)
-      const response = await quizService.getQuizHistory(page * PAGE_SIZE, PAGE_SIZE)
-      if (response.status === 'error' || !response.data) {
-        throw new Error(response.error || 'Failed to load quiz history')
-      }
-      // Ensure the response data is an array
-      const quizData = Array.isArray(response.data) ? response.data : []
-      setSessions(quizData)
+      const response = await quizService.getQuizHistory()
+      setSessions(response.data || [])
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load quiz history')
+      setError('Failed to load quiz history')
     } finally {
       setLoading(false)
     }
   }
 
+  // Calculate pagination values
+  const totalPages = Math.ceil(sessions.length / ITEMS_PER_PAGE)
+  const paginatedSessions = sessions.slice(
+    currentPage * ITEMS_PER_PAGE,
+    (currentPage + 1) * ITEMS_PER_PAGE
+  )
+
   const loadQuizDetails = async (id: number) => {
     try {
-      setError(null)
       const response = await quizService.getQuizSession(id)
-      console.log('Quiz session response:', response)
-      
-      if (response.status === 'error' || !response.data) {
-        throw new Error(response.error || 'Failed to load quiz details')
+      if (response.data) {
+        setSelectedSession(response.data)
       }
-
-      // Initialize questions as empty array if not present
-      const sessionData = {
-        ...response.data,
-        questions: response.data.questions || []
-      }
-
-      setSelectedSession(sessionData)
     } catch (err) {
-      console.error('Error loading quiz details:', err)
-      setError(err instanceof Error ? err.message : 'Failed to load quiz details')
+      console.error('Failed to load quiz details:', err)
     }
   }
 
@@ -67,153 +57,124 @@ const QuizHistory = () => {
   }
 
   if (loading) {
-    return (
-      <div className="bg-[#2d2d2d] rounded-xl p-6">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-gray-400">Loading quiz history...</div>
-        </div>
-      </div>
-    )
+    return <div className="p-6 text-gray-400">Loading history...</div>
   }
 
   if (error) {
-    return (
-      <div className="bg-[#2d2d2d] rounded-xl p-6">
-        <div className="text-red-400 mb-4">Error: {error}</div>
-        <button 
-          onClick={loadQuizHistory}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-        >
-          Retry
-        </button>
-      </div>
-    )
+    return <div className="p-6 text-red-400">{error}</div>
   }
 
-  if (!sessions || sessions.length === 0) {
+  if (!sessions.length) {
     return (
-      <div className="bg-[#2d2d2d] rounded-xl p-6">
-        <div className="flex flex-col items-center justify-center h-64">
-          <div className="text-gray-400 mb-4">No quiz history found</div>
-          <div className="text-sm text-gray-500">
-            Complete some quizzes to see them here
-          </div>
-        </div>
+      <div className="p-6 text-center">
+        <p className="text-gray-400">No quiz history available</p>
+        <p className="text-sm text-gray-500 mt-2">Complete some quizzes to see them here</p>
       </div>
     )
   }
 
   return (
-    <div className="bg-[#2d2d2d] rounded-xl p-6">
-      <h2 className="text-xl font-semibold text-white mb-6">Quiz History</h2>
-      
-      <div className="space-y-4">
-        {sessions.map((session) => (
+    <>
+      <div className="divide-y divide-gray-700">
+        {paginatedSessions.map(session => (
           <div
             key={session.id}
-            className="bg-[#353535] rounded-lg p-4 hover:bg-[#404040] transition-colors cursor-pointer"
+            className="p-4 hover:bg-[#353535] transition-colors cursor-pointer first:rounded-t-xl last:rounded-b-xl"
             onClick={() => loadQuizDetails(session.id)}
           >
-            <div className="flex justify-between items-start">
+            <div className="flex justify-between items-center">
               <div>
-                <h3 className="text-white font-medium">{session.topic}</h3>
+                <h3 className="text-lg font-medium text-white mb-1">{session.topic}</h3>
                 <p className="text-sm text-gray-400">
                   {new Date(session.created_at).toLocaleDateString()}
                 </p>
               </div>
               <div className="text-right">
-                <span className="text-sm text-gray-400">
+                <p className="text-sm font-medium text-gray-300 mb-1">
                   {session.total_questions} questions
-                </span>
-                <p className="text-sm text-gray-400">
-                  {session.difficulty_level}
                 </p>
+                <span className="text-xs px-2 py-1 bg-[#404040] rounded-full text-gray-300">
+                  {session.difficulty_level}
+                </span>
               </div>
             </div>
           </div>
         ))}
       </div>
 
-      {sessions.length >= PAGE_SIZE && (
-        <div className="flex justify-center mt-6 space-x-4">
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div className="flex justify-between items-center px-4 py-3 bg-[#353535] mt-4 rounded-lg">
           <button
-            onClick={() => setPage(p => Math.max(0, p - 1))}
-            disabled={page === 0}
-            className="px-4 py-2 bg-[#353535] text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#404040]"
+            onClick={() => setCurrentPage(p => Math.max(0, p - 1))}
+            disabled={currentPage === 0}
+            className="px-3 py-1 text-sm text-gray-300 hover:bg-[#404040] rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Previous
           </button>
+          <div className="text-sm text-gray-400">
+            Page {currentPage + 1} of {totalPages}
+          </div>
           <button
-            onClick={() => setPage(p => p + 1)}
-            className="px-4 py-2 bg-[#353535] text-white rounded-lg hover:bg-[#404040]"
+            onClick={() => setCurrentPage(p => Math.min(totalPages - 1, p + 1))}
+            disabled={currentPage === totalPages - 1}
+            className="px-3 py-1 text-sm text-gray-300 hover:bg-[#404040] rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Next
           </button>
         </div>
       )}
 
+      {/* Quiz Details Modal */}
       {selectedSession && (
         <Modal onClose={() => setSelectedSession(null)}>
-          <div className="p-6 max-h-[80vh] overflow-y-auto w-full max-w-6xl">
+          <div className="p-6 max-h-[80vh] overflow-y-auto">
             <h2 className="text-2xl font-bold text-white mb-4">{selectedSession.topic}</h2>
-            <div className="text-sm text-gray-400 mb-6">
-              <p>Difficulty: {selectedSession.difficulty_level}</p>
-              <p>Date: {formatDate(selectedSession.created_at)}</p>
-              <p>Total Questions: {selectedSession.total_questions}</p>
+            <div className="flex gap-4 text-sm text-gray-400 mb-6">
+              <span className="px-2 py-1 bg-[#353535] rounded-full">
+                {selectedSession.difficulty_level}
+              </span>
+              <span>{formatDate(selectedSession.created_at)}</span>
+              <span>{selectedSession.total_questions} questions</span>
             </div>
-            <div className="space-y-6">
-              {Array.isArray(selectedSession.questions) && selectedSession.questions.length > 0 ? (
-                selectedSession.questions.map((question, index) => (
-                  <div key={question.id} className="bg-[#2d2d2d] rounded-lg p-4">
-                    <div className="flex justify-between items-start mb-2">
-                      <p className="text-gray-300 font-medium">
-                        Question {index + 1}: {question.question_text}
-                      </p>
-                      <span className="text-xs text-gray-500">{question.question_type}</span>
-                    </div>
-                    {question.options && (
-                      <div className="ml-4 space-y-1">
-                        {(() => {
-                          try {
-                            const options = JSON.parse(question.options)
-                            if (!Array.isArray(options)) {
-                              console.error('Options is not an array:', options)
-                              return null
-                            }
-                            return options.map((option: string, i: number) => (
-                              <p
-                                key={i}
-                                className={`text-sm ${
-                                  option === question.correct_answer
-                                    ? 'text-green-400'
-                                    : 'text-gray-400'
-                                }`}
-                              >
-                                • {option}
-                              </p>
-                            ))
-                          } catch (e) {
-                            console.error('Failed to parse options:', e, question.options)
-                            return null
-                          }
-                        })()}
-                      </div>
-                    )}
-                    <p className="text-green-400 text-sm mt-2">
-                      Correct Answer: {question.correct_answer}
+            <div className="space-y-4">
+              {selectedSession.questions?.map((question, index) => (
+                <div key={question.id} className="bg-[#353535] rounded-lg p-4">
+                  <div className="flex justify-between items-start mb-3">
+                    <p className="text-gray-200 font-medium flex-1">
+                      <span className="text-gray-400 mr-2">Q{index + 1}.</span>
+                      {question.question_text}
                     </p>
+                    <span className="text-xs px-2 py-1 bg-[#404040] rounded-full text-gray-300 ml-4">
+                      {question.question_type}
+                    </span>
                   </div>
-                ))
-              ) : (
-                <div className="text-gray-400 text-center py-4">
-                  No questions available for this quiz
+                  {question.options && (
+                    <div className="space-y-2 ml-6 mb-3">
+                      {JSON.parse(question.options).map((option: string, i: number) => (
+                        <p
+                          key={i}
+                          className={`text-sm ${
+                            option === question.correct_answer
+                              ? 'text-green-400'
+                              : 'text-gray-400'
+                          }`}
+                        >
+                          {option === question.correct_answer ? '✓' : '•'} {option}
+                        </p>
+                      ))}
+                    </div>
+                  )}
+                  <p className="text-green-400 text-sm ml-6">
+                    Correct Answer: {question.correct_answer}
+                  </p>
                 </div>
-              )}
+              ))}
             </div>
           </div>
         </Modal>
       )}
-    </div>
+    </>
   )
 }
 

@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import type { QuizQuestion, QuizResult } from '../types/quiz'
+import { useNavigate } from 'react-router-dom'
 
 interface QuizDisplayProps {
   questions: QuizQuestion[]
@@ -8,11 +9,26 @@ interface QuizDisplayProps {
 }
 
 const QuizDisplay = ({ questions = [], onComplete, onBack }: QuizDisplayProps) => {
+  const navigate = useNavigate()
   const [answers, setAnswers] = useState<Record<string, string>>({})
   const [showResults, setShowResults] = useState(false)
+  const [loading, setLoading] = useState(true)
 
-  // Add loading state if no questions
-  if (!questions.length) {
+  // Add timeout to redirect if no questions load
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (!questions.length) {
+        console.warn('No questions loaded, redirecting to home')
+        navigate('/')
+      }
+      setLoading(false)
+    }, 2000) // Wait 2 seconds before redirecting
+
+    return () => clearTimeout(timer)
+  }, [questions, navigate])
+
+  // Show loading state briefly
+  if (loading && !questions.length) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -20,6 +36,12 @@ const QuizDisplay = ({ questions = [], onComplete, onBack }: QuizDisplayProps) =
         </div>
       </div>
     )
+  }
+
+  // Redirect immediately if no questions after loading
+  if (!loading && !questions.length) {
+    navigate('/')
+    return null
   }
 
   const handleAnswer = (questionId: string, answer: string) => {
@@ -64,11 +86,11 @@ const QuizDisplay = ({ questions = [], onComplete, onBack }: QuizDisplayProps) =
     onComplete(result)
   }
 
-  // Add a handler for the back button that considers results state
+  // Update handleBack to navigate to home when results are shown
   const handleBack = () => {
     if (showResults) {
-      // Go back to homepage when results are shown
-      window.location.reload() // Simple way to reset the entire app state
+      // Navigate back to home screen
+      navigate('/')
     } else {
       // Normal back behavior during quiz
       onBack()
