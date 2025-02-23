@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 from sqlalchemy import inspect
 from .database import engine, Base
-from .logger import logger
+from app.core.logger import logger
 
 def init_database():
     """Initialize the database, creating tables if they don't exist."""

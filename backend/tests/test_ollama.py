@@ -1,7 +1,7 @@
 import asyncio
 import json
-from backend.app.models import QuestionType, DifficultyLevel
-from backend.app.educhain_client import generate_questions
+from app.models import QuestionType, DifficultyLevel
+from app.clients.educhain_client import generate_questions
 
 
 async def test_question_type(

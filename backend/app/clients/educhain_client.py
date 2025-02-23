@@ -64,14 +64,16 @@ async def generate_questions(
                 options = q.options
             elif isinstance(response, TrueFalseQuestionList):
                 options = ['True', 'False']
+            elif isinstance(response, (ShortAnswerQuestionList, FillInBlankQuestionList)):
+                options = None  # These types don't have options
             else:
-                options = None
+                raise ValueError(f"Unexpected question type response: {type(response)}")
 
             quiz_question = QuizQuestion(
                 id=i,
                 question=q.question,
                 options=options,
-                correctAnswer=str(q.answer),  # Convert bool to str for T/F
+                correctAnswer=str(q.answer),
                 type=question_type
             )
             quiz_questions.append(quiz_question)

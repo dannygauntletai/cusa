@@ -3,10 +3,10 @@ import numpy as np
 import torch
 from fastapi import UploadFile, HTTPException
 import io
-from ..logger import logger
+from app.core.logger import logger
 import soundfile as sf
 from pydub import AudioSegment
-from ..config import get_settings
+from app.core.config import get_settings
 
 settings = get_settings()
 

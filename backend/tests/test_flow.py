@@ -6,7 +6,7 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent))
 
 from app.models import QuizConfig, QuestionTypeConfig, QuestionType, DifficultyLevel
-from app.quiz_generator import generate_quiz
+from app.services.quiz_generator import generate_quiz
 
 async def test_quiz_flow():
     """Test the complete quiz generation flow."""

@@ -3,10 +3,14 @@ from typing import List
 from sqlalchemy.orm import Session, joinedload
 from datetime import datetime
 
-from ..models import QuizConfig, QuizQuestion
-from ..database import QuizSession, StoredQuestion
+from app.models import QuizConfig, QuizQuestion
+from app.database import QuizSession, StoredQuestion
 
-def store_quiz_session(db: Session, config: QuizConfig, questions: List[QuizQuestion]) -> QuizSession:
+def store_quiz_session(
+    db: Session,
+    config: QuizConfig,
+    questions: List[QuizQuestion]
+) -> QuizSession:
     """Store a complete quiz session with its questions."""
     
     # Create quiz session
@@ -34,7 +38,11 @@ def store_quiz_session(db: Session, config: QuizConfig, questions: List[QuizQues
     db.commit()
     return db_quiz
 
-def get_quiz_history(db: Session, skip: int = 0, limit: int = 10) -> List[QuizSession]:
+def get_quiz_history(
+    db: Session,
+    skip: int = 0,
+    limit: int = 10
+) -> List[QuizSession]:
     """Retrieve quiz history with pagination."""
     return db.query(QuizSession)\
         .order_by(QuizSession.created_at.desc())\

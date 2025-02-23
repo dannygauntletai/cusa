@@ -3,10 +3,8 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 from datetime import datetime
 from pathlib import Path
-from typing import List
-import enum
 
-from .models import QuestionType, DifficultyLevel
+from app.models import QuestionType, DifficultyLevel
 
 # Create database directory if it doesn't exist
 db_dir = Path("./data")

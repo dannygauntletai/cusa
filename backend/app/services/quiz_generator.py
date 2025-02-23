@@ -2,7 +2,7 @@ from typing import List
 import asyncio
 from sqlalchemy.orm import Session
 from app.models import QuizConfig, QuizQuestion
-from app.educhain_client import generate_questions
+from app.clients.educhain_client import generate_questions
 from app.services.quiz_service import store_quiz_session
 
 

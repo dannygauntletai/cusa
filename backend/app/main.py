@@ -3,14 +3,18 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from sqlalchemy.orm import Session
 
-from .models import QuizConfig, QuizRequest, QuizResponse, QuestionTypeConfig
-from .quiz_generator import generate_quiz
-from .logger import logger
-from .database import get_db
-from .database_init import init_database
-from .services.quiz_service import get_quiz_history, get_quiz_session
-from .routers import speech
-from app.routes import settings  # Add this import
+from app.models import (
+    QuizConfig,
+    QuizRequest,
+    QuizResponse,
+    QuestionTypeConfig
+)
+from app.services.quiz_generator import generate_quiz
+from app.core.logger import logger
+from app.database import get_db, init_database
+from app.services.quiz_service import get_quiz_history, get_quiz_session
+from app.routers import speech
+from app.routes import settings
 
 
 @asynccontextmanager

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from app.educhain_client import update_model
+from app.clients.educhain_client import update_model
 
 router = APIRouter()
 
