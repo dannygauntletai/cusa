@@ -132,4 +132,26 @@ export const quizService = {
     const data = await response.json();
     return data.text;
   }
-} 
+}
+
+export const settingsService = {
+  updateModel: async (modelName: string): Promise<APIResponse<void>> => {
+    const response = await fetch(`${API_BASE_URL}/api/settings/model`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ model_name: modelName }),
+    });
+    
+    if (!response.ok) {
+      throw new Error('Failed to update model');
+    }
+    
+    const data = await response.json();
+    return {
+      status: 'success',
+      data
+    };
+  },
+}; 

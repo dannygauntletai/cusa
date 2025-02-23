@@ -10,6 +10,7 @@ from .database import get_db
 from .database_init import init_database
 from .services.quiz_service import get_quiz_history, get_quiz_session
 from .routers import speech
+from app.routes import settings  # Add this import
 
 
 @asynccontextmanager
@@ -98,6 +99,7 @@ def read_quiz(quiz_id: int, db: Session = Depends(get_db)):
 
 
 app.include_router(speech.router)
+app.include_router(settings.router)  # Add this line
 
 
 if __name__ == "__main__":

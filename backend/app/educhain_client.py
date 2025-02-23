@@ -16,12 +16,22 @@ load_dotenv()
 
 # Configure Ollama client
 llm_config = LLMConfig(
-    model_name="mistral",
+    model_name=getenv("OLLAMA_MODEL", "mistral"),
     base_url=getenv("OLLAMA_HOST", "http://localhost:11434"),
     temperature=0.7
 )
 
 client = Educhain(llm_config)
+
+def update_model(model_name: str) -> None:
+    """Update the LLM model configuration."""
+    global llm_config, client
+    llm_config = LLMConfig(
+        model_name=model_name,
+        base_url=getenv("OLLAMA_HOST", "http://localhost:11434"),
+        temperature=0.7
+    )
+    client = Educhain(llm_config)
 
 async def generate_questions(
     topic: str,

@@ -2,16 +2,52 @@ import { useState } from 'react'
 import QuizHistory from './QuizHistory'
 import { useNavigate } from 'react-router-dom'
 import Modal from './Modal'
-import { quizService } from '../services/api'
+import { quizService, settingsService } from '../services/api'
 
 interface ProfileDashboardProps {
   onBack: () => void
 }
 
+interface ModelOption {
+  value: string
+  name: string
+  params: string
+  description: string
+}
+
+const MODEL_OPTIONS: ModelOption[] = [
+  {
+    value: 'mistral',
+    name: 'Mistral',
+    params: '7B',
+    description: 'Fast and efficient general-purpose model'
+  },
+  {
+    value: 'llama2',
+    name: 'Llama 2',
+    params: '13B',
+    description: 'Meta\'s powerful general-purpose model'
+  },
+  {
+    value: 'codellama',
+    name: 'Code Llama',
+    params: '34B',
+    description: 'Specialized for code understanding and generation'
+  },
+  {
+    value: 'neural-chat',
+    name: 'Neural Chat',
+    params: '7B',
+    description: 'Optimized for conversational tasks'
+  }
+]
+
 const ProfileDashboard = ({ onBack }: ProfileDashboardProps) => {
   const [activeTab, setActiveTab] = useState<'history' | 'settings'>('history')
   const [showConfirmClear, setShowConfirmClear] = useState(false)
   const navigate = useNavigate()
+  const [currentModel, setCurrentModel] = useState(localStorage.getItem('aiModel') || 'mistral')
+  const [updateError, setUpdateError] = useState<string | null>(null)
 
   const handleClearHistory = async () => {
     try {
@@ -20,6 +56,19 @@ const ProfileDashboard = ({ onBack }: ProfileDashboardProps) => {
       window.location.reload() // Refresh to show empty history
     } catch (error) {
       console.error('Failed to clear history:', error)
+    }
+  }
+
+  const handleModelChange = async (event: React.ChangeEvent<HTMLSelectElement>) => {
+    const newModel = event.target.value
+    try {
+      await settingsService.updateModel(newModel)
+      setCurrentModel(newModel)
+      localStorage.setItem('aiModel', newModel)
+      setUpdateError(null)
+    } catch (error) {
+      console.error('Failed to update model:', error)
+      setUpdateError('Failed to update model. Please try again.')
     }
   }
 
@@ -85,57 +134,27 @@ const ProfileDashboard = ({ onBack }: ProfileDashboardProps) => {
                     <label className="block text-sm font-medium text-gray-300 mb-2">
                       Default Model
                     </label>
-                    <select className="w-full p-2 rounded-lg bg-[#404040] text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                      <option value="mistral">Mistral</option>
-                      <option value="llama">Llama</option>
+                    <select 
+                      value={currentModel}
+                      onChange={handleModelChange}
+                      className="w-full p-2 rounded-lg bg-[#404040] text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      {MODEL_OPTIONS.map(model => (
+                        <option key={model.value} value={model.value}>
+                          {model.name} ({model.params} params) - {model.description}
+                        </option>
+                      ))}
                     </select>
-                  </div>
-                </div>
-
-                <div>
-                  <h3 className="text-lg text-white font-medium mb-4">App Preferences</h3>
-                  <div className="bg-[#353535] rounded-lg p-4 space-y-4">
-                    <div className="flex items-center justify-between">
-                      <label className="text-sm font-medium text-gray-300">
-                        Launch at Startup
-                      </label>
-                      <div className="relative inline-block w-10 mr-2 align-middle select-none">
-                        <input type="checkbox" className="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer" />
-                        <label className="toggle-label block overflow-hidden h-6 rounded-full bg-gray-600 cursor-pointer"></label>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <label className="text-sm font-medium text-gray-300">
-                        Enable Desktop Notifications
-                      </label>
-                      <div className="relative inline-block w-10 mr-2 align-middle select-none">
-                        <input type="checkbox" className="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer" />
-                        <label className="toggle-label block overflow-hidden h-6 rounded-full bg-gray-600 cursor-pointer"></label>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <h3 className="text-lg text-white font-medium mb-4">Storage</h3>
-                  <div className="bg-[#353535] rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-4">
-                      <span className="text-sm text-gray-300">Local Storage Used</span>
-                      <span className="text-sm text-gray-300">24.5 MB</span>
-                    </div>
-                    <button className="w-full px-4 py-2 text-sm text-red-400 hover:text-red-300 transition-colors border border-red-400/20 rounded-lg hover:bg-red-400/10">
-                      Clear Local Data
-                    </button>
+                    {updateError && (
+                      <p className="mt-2 text-sm text-red-400">{updateError}</p>
+                    )}
                   </div>
                 </div>
 
                 <div className="border-t border-gray-700 pt-6">
                   <h3 className="text-lg text-white font-medium mb-4">About</h3>
                   <div className="bg-[#353535] rounded-lg p-4">
-                    <p className="text-sm text-gray-400 mb-4">Version 1.0.0</p>
-                    <button className="w-full px-4 py-2 text-sm text-blue-400 hover:text-blue-300 transition-colors border border-blue-400/20 rounded-lg hover:bg-blue-400/10">
-                      Check for Updates
-                    </button>
+                    <p className="text-sm text-gray-400">Version 1.0.0</p>
                   </div>
                 </div>
               </div>
